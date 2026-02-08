@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "landxml_tools"
+version = "0.1.0"
+description = "Shared library for LandXML processing and visualization tools"
+authors = [
+  { name="Pablo Hevia · Hedra Topografía", email="pablo@hedrasl.com" },
+]
+readme = "README.md"
+requires-python = ">=3.9"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "numpy",
+    "matplotlib",
+    "scipy",
+    "lxml",
+    "pillow",
+    "rasterio"
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
