@@ -99,7 +99,10 @@ def create_colormap_legend(grid, colormap='terrain', output_path=None,
 
 def save_colored_map(grid, output_name, colormap='terrain', output_dir=None,
                      class_interval=None, whitening=0.0, center_zero=False,
-                     save_png=True, save_jpg=True, rotate_90=True):
+                     save_png=True, save_jpg=True, rotate_90=True,
+                     hillshade=False, hillshade_intensity=0.5,
+                     hillshade_azimuth=315, hillshade_altitude=45,
+                     resolution=1.0):
     """
     Genera y guarda imágenes coloreadas (PNG/JPG) del grid.
     
@@ -114,6 +117,11 @@ def save_colored_map(grid, output_name, colormap='terrain', output_dir=None,
         save_png (bool): Guardar PNG con transparencia.
         save_jpg (bool): Guardar JPG.
         rotate_90 (bool): Rotar 90 grados antihorario (necesario para orientación correcta).
+        hillshade (bool): Si True, aplica efecto de sombreado de relieve.
+        hillshade_intensity (float): Intensidad del hillshade (0.0 - 1.0).
+        hillshade_azimuth (float): Ángulo del sol (0=Norte, 315=Noroeste).
+        hillshade_altitude (float): Elevación del sol (0-90 grados).
+        resolution (float): Resolución del grid en metros (para cálculo correcto del hillshade).
     """
     if output_dir:
         os.makedirs(output_dir, exist_ok=True)
@@ -171,6 +179,24 @@ def save_colored_map(grid, output_name, colormap='terrain', output_dir=None,
     if whitening > 0:
         whitening = max(0.0, min(1.0, whitening))
         rgb = rgb * (1 - whitening) + whitening
+    
+    # Aplicar hillshade (después del blanqueamiento)
+    if hillshade:
+        from landxml_tools.processing.raster import calculate_hillshade
+        hs = calculate_hillshade(grid_to_plot, hillshade_azimuth, hillshade_altitude, resolution=resolution)
+        # Expandir hillshade a 3 canales
+        hs_valid = np.nan_to_num(hs, nan=1.0)  # NaN -> 1.0 (sin sombra)
+        hs_rgb = np.stack([hs_valid, hs_valid, hs_valid], axis=2)
+        # Blend: modula luminosidad multiplicando el color por el hillshade
+        # A mayor intensidad, más influencia del sombreado
+        hillshade_intensity = max(0.0, min(1.0, hillshade_intensity))
+        # Fórmula: rgb_final = rgb * (1 - intensity * (1 - hillshade))
+        # Cuando hillshade=1 (luz directa): rgb sin cambios
+        # Cuando hillshade=0 (sombra): rgb oscurecido según intensidad
+        shading_factor = 1.0 - hillshade_intensity * (1.0 - hs_rgb)
+        rgb = rgb * shading_factor
+        rgb = np.clip(rgb, 0, 1)
+        print(f"  Hillshade aplicado: azimut={hillshade_azimuth}°, altitud={hillshade_altitude}°, intensidad={hillshade_intensity*100:.0f}%")
         
     img_array = (rgb * 255).astype(np.uint8)
     

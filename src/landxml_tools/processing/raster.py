@@ -96,3 +96,40 @@ def rasterize_surface_tin(points, triangles, resolution=0.05, extent=None):
         grid_z = np.ma.filled(grid_z, np.nan)
     
     return grid_z, [xmin, xmax, ymin, ymax]
+
+
+def calculate_hillshade(grid_z, azimuth=315, altitude=45, resolution=1.0):
+    """
+    Calcula el sombreado de relieve (hillshade) a partir de un grid de elevaciones.
+    
+    Args:
+        grid_z (numpy.ndarray): Grid 2D con elevaciones (puede contener NaN).
+        azimuth (float): Ángulo del sol en grados (0=Norte, 90=Este, 315=Noroeste).
+        altitude (float): Elevación del sol sobre el horizonte en grados (0-90).
+        resolution (float): Tamaño de celda en metros (para escalar gradientes).
+    
+    Returns:
+        numpy.ndarray: Grid 2D con valores de sombreado normalizados (0-1).
+    """
+    # Convertir ángulos a radianes (ajuste para convención cartográfica)
+    azimuth_rad = np.radians(360 - azimuth + 90)
+    altitude_rad = np.radians(altitude)
+    
+    # Calcular gradientes (pendientes) en X e Y
+    dy, dx = np.gradient(grid_z, resolution)
+    
+    # Calcular pendiente y aspecto
+    slope = np.arctan(np.sqrt(dx**2 + dy**2))
+    aspect = np.arctan2(-dx, dy)
+    
+    # Calcular hillshade usando la fórmula estándar
+    hillshade = (
+        np.cos(altitude_rad) * np.cos(slope) +
+        np.sin(altitude_rad) * np.sin(slope) * np.cos(azimuth_rad - aspect)
+    )
+    
+    # Normalizar a rango 0-1 y manejar NaN
+    hillshade = np.clip(hillshade, 0, 1)
+    hillshade[np.isnan(grid_z)] = np.nan
+    
+    return hillshade

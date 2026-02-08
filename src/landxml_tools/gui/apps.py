@@ -60,6 +60,7 @@ class LandXMLImageGUI:
         self.classify_var = tk.BooleanVar(value=True)
         self.class_interval_var = tk.StringVar(value="1.00")
         self.output_dir_var = tk.StringVar(value="")
+        self.hillshade_intensity_var = tk.IntVar(value=0)  # 0 = desactivado
         self.processing = False
         
         self._create_ui()
@@ -123,6 +124,17 @@ class LandXMLImageGUI:
         tk.Label(class_row, text="Intervalo:", font=FONTS['body'], bg=COLORS['bg_white'], fg=COLORS['text_secondary']).pack(side=tk.LEFT, padx=(SPACING['lg'], SPACING['xs']))
         tk.Entry(class_row, textvariable=self.class_interval_var, width=6, font=FONTS['body'], bg=COLORS['input_bg'], fg=COLORS['text_primary'], relief=tk.FLAT, highlightthickness=1, highlightbackground=COLORS['border'], highlightcolor=COLORS['primary']).pack(side=tk.LEFT, ipady=2)
         tk.Label(class_row, text="m", font=FONTS['body'], bg=COLORS['bg_white'], fg=COLORS['text_secondary']).pack(side=tk.LEFT, padx=(SPACING['xs'], 0))
+        
+        # Hillshade (0% = desactivado)
+        hillshade_row = tk.Frame(output_card.content, bg=COLORS['bg_white'])
+        hillshade_row.pack(fill=tk.X, pady=(SPACING['sm'], 0))
+        tk.Label(hillshade_row, text="Hillshade (%):", font=FONTS['body'], width=16, anchor='w', bg=COLORS['bg_white'], fg=COLORS['text_secondary']).pack(side=tk.LEFT)
+        hillshade_controls = tk.Frame(hillshade_row, bg=COLORS['bg_white'])
+        hillshade_controls.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        self.hillshade_scale = tk.Scale(hillshade_controls, from_=0, to=100, orient=tk.HORIZONTAL, variable=self.hillshade_intensity_var, length=250, bg=COLORS['bg_white'], highlightthickness=0, font=FONTS['small'], showvalue=0)
+        self.hillshade_scale.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        self.hillshade_spin = tk.Spinbox(hillshade_controls, from_=0, to=100, textvariable=self.hillshade_intensity_var, width=5, font=FONTS['body'])
+        self.hillshade_spin.pack(side=tk.LEFT, padx=(SPACING['sm'], 0))
 
         btn_frame = tk.Frame(main, bg=COLORS['bg_light'])
         btn_frame.pack(fill=tk.X, pady=SPACING['lg'])
@@ -205,7 +217,8 @@ class LandXMLImageGUI:
             if self.save_png_var.get() or self.save_jpg_var.get():
                 self._update_status("Generando imágenes...", 80)
                 class_interval = float(self.class_interval_var.get()) if self.classify_var.get() else None
-                save_colored_map(grid_z, out_name, colormap=self.colormap_var.get(), output_dir=out_dir, class_interval=class_interval, whitening=self.whitening_var.get()/100.0, save_png=self.save_png_var.get(), save_jpg=self.save_jpg_var.get(), rotate_90=True)
+                hillshade_intensity = self.hillshade_intensity_var.get() / 100.0
+                save_colored_map(grid_z, out_name, colormap=self.colormap_var.get(), output_dir=out_dir, class_interval=class_interval, whitening=self.whitening_var.get()/100.0, save_png=self.save_png_var.get(), save_jpg=self.save_jpg_var.get(), rotate_90=True, hillshade=(hillshade_intensity > 0), hillshade_intensity=hillshade_intensity, resolution=res)
                 if self.save_png_var.get(): save_world_file(extent, grid_z.shape, os.path.join(out_dir, out_name + ".pgw"))
                 if self.save_jpg_var.get(): save_world_file(extent, grid_z.shape, os.path.join(out_dir, out_name + ".jgw"))
             if self.save_legend_var.get():

@@ -18,9 +18,7 @@ El efecto **Hillshade** (sombreado de relieve) simula la iluminación solar sobr
 
 ### 1. Nueva función de cálculo Hillshade
 
-#### [NEW] Función `calculate_hillshade()`
-
-Ubicación: Después de la función `rasterize_surface_tin()` (~línea 376)
+#### [NEW] `calculate_hillshade()` en [raster.py](file:///e:/GitHub/landxml_tools/src/landxml_tools/processing/raster.py)
 
 ```python
 def calculate_hillshade(grid_z, azimuth=315, altitude=45, resolution=1.0):
@@ -36,178 +34,87 @@ def calculate_hillshade(grid_z, azimuth=315, altitude=45, resolution=1.0):
     Returns:
         numpy.ndarray: Grid 2D con valores de sombreado normalizados (0-1)
     """
-    # Convertir ángulos a radianes
-    azimuth_rad = np.radians(360 - azimuth + 90)  # Ajuste para convención cartográfica
+    azimuth_rad = np.radians(360 - azimuth + 90)
     altitude_rad = np.radians(altitude)
-    
-    # Calcular gradientes (pendientes) en X e Y
-    # Usar np.gradient que maneja bordes correctamente
     dy, dx = np.gradient(grid_z, resolution)
-    
-    # Calcular pendiente y aspecto
     slope = np.arctan(np.sqrt(dx**2 + dy**2))
     aspect = np.arctan2(-dx, dy)
-    
-    # Calcular hillshade usando la fórmula estándar
     hillshade = (
         np.cos(altitude_rad) * np.cos(slope) +
         np.sin(altitude_rad) * np.sin(slope) * np.cos(azimuth_rad - aspect)
     )
-    
-    # Normalizar a rango 0-1 y manejar NaN
     hillshade = np.clip(hillshade, 0, 1)
     hillshade[np.isnan(grid_z)] = np.nan
-    
     return hillshade
 ```
 
 ---
 
-### 2. Modificar `create_surface_map()`
+### 2. Modificar `save_colored_map()`
 
-#### [MODIFY] [create_surface_map](file:///e:/GitHub/landxml2image/src/landxml2image.py#L382-L525)
+#### [MODIFY] [plotting.py](file:///e:/GitHub/landxml_tools/src/landxml_tools/viz/plotting.py)
 
 **Nuevos parámetros:**
 ```python
-def create_surface_map(grid_z, extent, output_name, colormap='terrain',
-                       save_png_alpha=True, save_jpg=True, output_dir=None,
-                       class_interval=None, whitening=0.0,
-                       hillshade=False, hillshade_intensity=0.5,  # NUEVO
-                       hillshade_azimuth=315, hillshade_altitude=45):  # NUEVO
+def save_colored_map(grid_z, output_name, colormap='terrain', output_dir=None,
+                     class_interval=None, whitening=0.0, center_zero=False,
+                     save_png=True, save_jpg=True, rotate_90=False,
+                     hillshade=False, hillshade_intensity=0.5,  # NUEVO
+                     hillshade_azimuth=315, hillshade_altitude=45):  # NUEVO
 ```
 
-**Nueva lógica después de aplicar whitening (~línea 453):**
+**Nueva lógica después de aplicar whitening:**
 ```python
-# Aplicar hillshade (después del whitening)
 if hillshade:
-    # Calcular resolución desde extent
-    xmin, xmax, ymin, ymax = extent
-    resolution = (xmax - xmin) / grid.shape[1]
-    
-    # Calcular sombreado
+    from landxml_tools.processing.raster import calculate_hillshade
+    resolution = 1.0  # O calcular desde extent si está disponible
     hs = calculate_hillshade(grid, hillshade_azimuth, hillshade_altitude, resolution)
-    
-    # Transponer para coincidir con orientación del grid
-    hs = hs.T
-    
-    # Blend: colormap * (1 - intensity) + colormap * hillshade * intensity
-    # Esto oscurece las zonas en sombra manteniendo los colores
-    hillshade_intensity = max(0.0, min(1.0, hillshade_intensity))
-    print(f"  Aplicando hillshade: azimut={hillshade_azimuth}°, altitud={hillshade_altitude}°, intensidad={hillshade_intensity*100:.0f}%")
-    
-    # Expandir hillshade a 3 canales para multiplicar con RGB
     hs_rgb = np.stack([hs, hs, hs], axis=2)
-    
-    # Aplicar blend
     rgb = rgb * (1 - hillshade_intensity) + rgb * hs_rgb * hillshade_intensity
     rgb = np.clip(rgb, 0, 1)
 ```
 
 ---
 
-### 3. Modificar `create_colormap_legend()`
+### 3. Modificar GUI (`LandXMLImageGUI`)
 
-#### [MODIFY] [create_colormap_legend](file:///e:/GitHub/landxml2image/src/landxml2image.py#L584-L676)
+#### [MODIFY] [apps.py](file:///e:/GitHub/landxml_tools/src/landxml_tools/gui/apps.py)
 
-**Nuevos parámetros:**
+**Nuevas variables en `__init__`:**
 ```python
-def create_colormap_legend(grid_z, colormap='terrain', output_name='superficie',
-                           png=True, jpg=True, font_name='Inter', font_size=12, 
-                           output_dir=None, class_interval=None, whitening=0.0,
-                           hillshade=False):  # NUEVO (solo para indicador)
-```
-
-**Opcional:** Añadir nota en la leyenda si hillshade está activo.
-
----
-
-### 4. Modificar `process_landxml()`
-
-#### [MODIFY] [process_landxml](file:///e:/GitHub/landxml2image/src/landxml2image.py#L682-L775)
-
-**Nuevos parámetros:**
-```python
-def process_landxml(surface_file, output_name, resolution, epsg_code, colormap,
-                    save_jpg, save_png, save_tiff, save_legend, output_dir=None,
-                    class_interval=None, whitening=0.0, progress_callback=None,
-                    hillshade=False, hillshade_intensity=0.5,  # NUEVO
-                    hillshade_azimuth=315, hillshade_altitude=45):  # NUEVO
-```
-
-**Pasar parámetros a las funciones llamadas.**
-
----
-
-### 5. Modificar GUI (`LandXMLImageGUI`)
-
-#### [MODIFY] [LandXMLImageGUI.__init__](file:///e:/GitHub/landxml2image/src/landxml2image.py#L864-L900)
-
-**Nuevas variables:**
-```python
-# Variables para hillshade
 self.hillshade_var = tk.BooleanVar(value=False)
-self.hillshade_intensity_var = tk.IntVar(value=50)  # 0-100%
+self.hillshade_intensity_var = tk.IntVar(value=50)
 ```
 
-#### [MODIFY] Sección de efectos en `create_widgets()`
-
-Añadir después de los controles de whitening:
-
+**Nuevos controles en `_create_ui` (después de whitening):**
 ```python
-# --- Hillshade ---
-hillshade_frame = tk.Frame(effects_frame, bg=COLORS['light'])
-hillshade_frame.pack(fill=tk.X, pady=(SPACING['SMALL'], 0))
+# Hillshade
+hillshade_row = tk.Frame(config_card.content, bg=COLORS['bg_white'])
+hillshade_row.pack(fill=tk.X, pady=(SPACING['xs'], 0))
 
-self.hillshade_check = tk.Checkbutton(
-    hillshade_frame,
-    text="Hillshade (sombreado)",
-    variable=self.hillshade_var,
-    font=FONTS['body'],
-    bg=COLORS['light'],
-    fg=COLORS['text'],
-    command=self.on_hillshade_toggle
-)
-self.hillshade_check.pack(side=tk.LEFT)
-ToolTip(self.hillshade_check, "Aplica efecto de iluminación solar para resaltar el relieve")
+StyledCheckbox(hillshade_row, "Hillshade", self.hillshade_var).pack(side=tk.LEFT)
 
-# Slider de intensidad (inicialmente oculto o deshabilitado)
-self.hillshade_intensity_frame = tk.Frame(hillshade_frame, bg=COLORS['light'])
-self.hillshade_intensity_frame.pack(side=tk.LEFT, padx=(SPACING['MEDIUM'], 0))
+tk.Label(hillshade_row, text="Intensidad:", font=FONTS['body'],
+        bg=COLORS['bg_white'], fg=COLORS['text_secondary']).pack(side=tk.LEFT, padx=(SPACING['lg'], SPACING['xs']))
 
-tk.Label(
-    self.hillshade_intensity_frame,
-    text="Intensidad:",
-    font=FONTS['small'],
-    bg=COLORS['light'],
-    fg=COLORS['text']
-).pack(side=tk.LEFT)
+self.hillshade_scale = tk.Scale(hillshade_row, from_=0, to=100, orient=tk.HORIZONTAL,
+                                variable=self.hillshade_intensity_var, length=120,
+                                bg=COLORS['bg_white'], highlightthickness=0, showvalue=0)
+self.hillshade_scale.pack(side=tk.LEFT)
 
-self.hillshade_slider = tk.Scale(
-    self.hillshade_intensity_frame,
-    from_=0, to=100,
-    orient=tk.HORIZONTAL,
-    variable=self.hillshade_intensity_var,
-    length=100,
-    showvalue=False,
-    bg=COLORS['light'],
-    highlightthickness=0
-)
-self.hillshade_slider.pack(side=tk.LEFT)
-
-self.hillshade_intensity_label = tk.Label(
-    self.hillshade_intensity_frame,
-    text="50%",
-    font=FONTS['small'],
-    bg=COLORS['light'],
-    fg=COLORS['text'],
-    width=4
-)
-self.hillshade_intensity_label.pack(side=tk.LEFT)
+self.hillshade_spin = tk.Spinbox(hillshade_row, from_=0, to=100,
+                                textvariable=self.hillshade_intensity_var, width=4, font=FONTS['body'])
+self.hillshade_spin.pack(side=tk.LEFT, padx=(SPACING['xs'], 0))
+tk.Label(hillshade_row, text="%", font=FONTS['body'], bg=COLORS['bg_white']).pack(side=tk.LEFT)
 ```
 
-#### [MODIFY] Método `run_process()`
+**Modificar `_run_processing` para pasar los nuevos parámetros a `save_colored_map()`.**
 
-Añadir lectura de las nuevas variables y pasarlas a `process_landxml()`.
+---
+
+### 4. Aplicar también a `LandXMLDiffGUI`
+
+Los mismos cambios de GUI se replican en la clase `LandXMLDiffGUI` dentro de [apps.py](file:///e:/GitHub/landxml_tools/src/landxml_tools/gui/apps.py).
 
 ---
 
@@ -224,15 +131,17 @@ Añadir lectura de las nuevas variables y pasarlas a `process_landxml()`.
 
 - [ ] PNG con transparencia muestra hillshade correctamente
 - [ ] JPG muestra hillshade correctamente
-- [ ] Preview en la GUI actualiza con hillshade (si aplica)
 
 ---
 
 ## Resumen de archivos afectados
 
-| Archivo                | Cambios                                                        |
-| ---------------------- | -------------------------------------------------------------- |
-| `src/landxml2image.py` | Nueva función + modificaciones en 4 funciones existentes + GUI |
+| Archivo                                  | Cambios                                     |
+| ---------------------------------------- | ------------------------------------------- |
+| `src/landxml_tools/processing/raster.py` | Nueva función `calculate_hillshade()`       |
+| `src/landxml_tools/viz/plotting.py`      | Modificar `save_colored_map()`              |
+| `src/landxml_tools/gui/apps.py`          | Modificar ambas clases GUI                  |
+| `apps/landxml_diff.py`                   | Pasar nuevos parámetros en función `main()` |
 
 **Complejidad estimada:** Media-baja (~2-3 horas)
 
