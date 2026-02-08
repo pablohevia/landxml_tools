@@ -51,8 +51,8 @@ class LandXMLImageGUI:
         self.resolution_var = tk.StringVar(value="0.05")
         self.epsg_var = tk.StringVar(value="25830")
         self.output_name_var = tk.StringVar(value="superficie")
-        self.colormap_var = tk.StringVar(value="terrain")
-        self.whitening_var = tk.IntVar(value=0)
+        self.colormap_var = tk.StringVar(value="gist_earth")
+        self.whitening_var = tk.IntVar(value=70)
         self.save_png_var = tk.BooleanVar(value=True)
         self.save_jpg_var = tk.BooleanVar(value=True)
         self.save_tiff_var = tk.BooleanVar(value=True)
@@ -60,7 +60,7 @@ class LandXMLImageGUI:
         self.classify_var = tk.BooleanVar(value=True)
         self.class_interval_var = tk.StringVar(value="1.00")
         self.output_dir_var = tk.StringVar(value="")
-        self.hillshade_intensity_var = tk.IntVar(value=0)  # 0 = desactivado
+        self.hillshade_intensity_var = tk.IntVar(value=50)
         self.processing = False
         
         self._create_ui()
