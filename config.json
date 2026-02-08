@@ -1,0 +1,30 @@
+{
+    "visualizador": {
+        "colormap": "gist_earth",
+        "whitening": 75,
+        "hillshade": 50,
+        "resolution": 0.05,
+        "epsg": 25830,
+        "output_name": "superficie",
+        "classify": true,
+        "class_interval": 1.0,
+        "save_png": true,
+        "save_jpg": true,
+        "save_tiff": true,
+        "save_legend": true
+    },
+    "comparador": {
+        "colormap": "coolwarm_r",
+        "whitening": 0,
+        "hillshade": 0,
+        "resolution": 0.05,
+        "epsg": 25830,
+        "output_name": "diferencia",
+        "classify": true,
+        "class_interval": 1,
+        "save_png": true,
+        "save_jpg": true,
+        "save_tiff": true,
+        "save_legend": true
+    }
+}

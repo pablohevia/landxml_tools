@@ -37,6 +37,9 @@ class LandXMLImageGUI:
     Interfaz gráfica para visualizar superficies LandXML como imágenes rasterizadas.
     """
     def __init__(self, parent):
+        from ..config import get_section
+        cfg = get_section('visualizador')
+        
         self.parent = parent
         self.root = parent
         self.is_standalone = isinstance(parent, (tk.Tk, tk.Toplevel))
@@ -48,19 +51,19 @@ class LandXMLImageGUI:
             center_window(self.parent)
         
         self.file_path = tk.StringVar()
-        self.resolution_var = tk.StringVar(value="0.05")
-        self.epsg_var = tk.StringVar(value="25830")
-        self.output_name_var = tk.StringVar(value="superficie")
-        self.colormap_var = tk.StringVar(value="gist_earth")
-        self.whitening_var = tk.IntVar(value=70)
-        self.save_png_var = tk.BooleanVar(value=True)
-        self.save_jpg_var = tk.BooleanVar(value=True)
-        self.save_tiff_var = tk.BooleanVar(value=True)
-        self.save_legend_var = tk.BooleanVar(value=True)
-        self.classify_var = tk.BooleanVar(value=True)
-        self.class_interval_var = tk.StringVar(value="1.00")
+        self.resolution_var = tk.StringVar(value=str(cfg.get('resolution', 0.05)))
+        self.epsg_var = tk.StringVar(value=str(cfg.get('epsg', 25830)))
+        self.output_name_var = tk.StringVar(value=cfg.get('output_name', 'superficie'))
+        self.colormap_var = tk.StringVar(value=cfg.get('colormap', 'gist_earth'))
+        self.whitening_var = tk.IntVar(value=cfg.get('whitening', 75))
+        self.save_png_var = tk.BooleanVar(value=cfg.get('save_png', True))
+        self.save_jpg_var = tk.BooleanVar(value=cfg.get('save_jpg', True))
+        self.save_tiff_var = tk.BooleanVar(value=cfg.get('save_tiff', True))
+        self.save_legend_var = tk.BooleanVar(value=cfg.get('save_legend', True))
+        self.classify_var = tk.BooleanVar(value=cfg.get('classify', True))
+        self.class_interval_var = tk.StringVar(value=str(cfg.get('class_interval', 1.0)))
         self.output_dir_var = tk.StringVar(value="")
-        self.hillshade_intensity_var = tk.IntVar(value=50)
+        self.hillshade_intensity_var = tk.IntVar(value=cfg.get('hillshade', 50))
         self.processing = False
         
         self._create_ui()
@@ -253,6 +256,9 @@ class LandXMLDiffGUI:
     """
     def __init__(self, parent):
         from ..processing.diff import calculate_difference
+        from ..config import get_section
+        cfg = get_section('comparador')
+        
         self.parent = parent
         self.root = parent
         self.is_standalone = isinstance(parent, (tk.Tk, tk.Toplevel))
@@ -264,17 +270,17 @@ class LandXMLDiffGUI:
         
         self.file1_path = tk.StringVar()
         self.file2_path = tk.StringVar()
-        self.resolution_var = tk.StringVar(value="0.05")
-        self.epsg_var = tk.StringVar(value="25830")
-        self.output_name_var = tk.StringVar(value="landxml_diff")
-        self.colormap_var = tk.StringVar(value="coolwarm_r")
-        self.whitening_var = tk.IntVar(value=0)
-        self.save_png_var = tk.BooleanVar(value=True)
-        self.save_jpg_var = tk.BooleanVar(value=True)
-        self.save_tiff_var = tk.BooleanVar(value=True)
-        self.save_legend_var = tk.BooleanVar(value=True)
-        self.classify_var = tk.BooleanVar(value=True)
-        self.class_interval_var = tk.StringVar(value="1.00")
+        self.resolution_var = tk.StringVar(value=str(cfg.get('resolution', 0.05)))
+        self.epsg_var = tk.StringVar(value=str(cfg.get('epsg', 25830)))
+        self.output_name_var = tk.StringVar(value=cfg.get('output_name', 'diferencia'))
+        self.colormap_var = tk.StringVar(value=cfg.get('colormap', 'coolwarm_r'))
+        self.whitening_var = tk.IntVar(value=cfg.get('whitening', 0))
+        self.save_png_var = tk.BooleanVar(value=cfg.get('save_png', True))
+        self.save_jpg_var = tk.BooleanVar(value=cfg.get('save_jpg', True))
+        self.save_tiff_var = tk.BooleanVar(value=cfg.get('save_tiff', True))
+        self.save_legend_var = tk.BooleanVar(value=cfg.get('save_legend', True))
+        self.classify_var = tk.BooleanVar(value=cfg.get('classify', True))
+        self.class_interval_var = tk.StringVar(value=str(cfg.get('class_interval', 0.25)))
         self.output_dir_var = tk.StringVar(value="")
         self.processing = False
         
