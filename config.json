@@ -1,7 +1,7 @@
 {
     "visualizador": {
         "colormap": "gist_earth",
-        "whitening": 75,
+        "whitening": 70,
         "hillshade": 50,
         "resolution": 0.05,
         "epsg": 25830,

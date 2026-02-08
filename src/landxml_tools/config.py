@@ -13,7 +13,7 @@ def _find_config_path():
     """Busca config.json en ubicaciones estándar."""
     # 1. Directorio del proyecto (junto a landxml_suite.py)
     current = os.path.dirname(os.path.abspath(__file__))
-    project_root = os.path.abspath(os.path.join(current, '..', '..', '..'))
+    project_root = os.path.abspath(os.path.join(current, '..', '..'))
     config_in_root = os.path.join(project_root, 'config.json')
     if os.path.exists(config_in_root):
         return config_in_root
