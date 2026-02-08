@@ -10,6 +10,17 @@ Suite de herramientas para procesamiento y visualización de archivos LandXML.
 - **Visualizador** (`landxml2image`): Genera imágenes rasterizadas a partir de superficies TIN.
 - **Comparador** (`landxml_diff`): Compara dos superficies y genera mapas de diferencia.
 
+## Características Destacadas
+
+*   **Visualización Topográfica Avanzada** (Opciones configurables):
+    *   **Clasificación por Elevación**: Genera mapas de colores basados en rangos de altura definidos por el usuario.
+    *   **Sombreado (Hillshade)**: Aplica efectos de relieve personalizables para resaltar la topografía del terreno.
+    *   **Control de Intensidad**: Ajuste de blanqueo (*whitening*) variable para suavizar la visualización y mejorar la legibilidad.
+*   **Georreferenciación Completa**:
+    *   Salida directa en formato **GeoTIFF**, manteniendo la información espacial precisa.
+    *   Generación automática de archivos **World File** (`.pgw`, `.jgw`) para formatos de imagen estándar (PNG, JPG), asegurando compatibilidad total con software CAD y GIS.
+    *   **Integración con AutoCAD**: Las imágenes georreferenciadas se pueden situar automáticamente en su posición correcta utilizando la herramienta [ImageGeoRef](https://github.com/pablohevia/ImageGeoRef).
+
 ## Requisitos
 
 - Python 3.9+
