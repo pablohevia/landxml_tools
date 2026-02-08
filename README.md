@@ -10,53 +10,92 @@ Suite de herramientas para procesamiento y visualización de archivos LandXML.
 - **Visualizador** (`landxml2image`): Genera imágenes rasterizadas a partir de superficies TIN.
 - **Comparador** (`landxml_diff`): Compara dos superficies y genera mapas de diferencia.
 
+## Requisitos
+
+- Python 3.9+
+- Librerías: `numpy`, `matplotlib`, `scipy`, `lxml`, `pillow`, `rasterio`
+
+*Se recomienda usar Conda para instalar `rasterio` en Windows.*
+
 ## Instalación
 
-```bash
-# Activar entorno Conda con dependencias geoespaciales
-conda activate geo_interp
+1. Clonar el repositorio:
+   ```bash
+   git clone https://github.com/pablohevia/landxml_tools.git
+   cd landxml_tools
+   ```
 
-# Instalar en modo desarrollo (opcional)
-pip install -e .
-```
+2. Crear un entorno virtual (recomendado):
+   ```bash
+   # Opción A: Conda
+   conda create -n landxml_env python=3.9 rasterio
+   conda activate landxml_env
+   pip install .
+
+   # Opción B: venv + pip
+   python -m venv venv
+   source venv/bin/activate  # En Windows: venv\Scripts\activate
+   pip install .
+   ```
 
 ## Uso
 
-### Suite Completa (Recomendado)
+### Suite Completa (GUI Unificada)
 
-Ejecuta la aplicación con todas las herramientas en pestañas:
+Ejecuta la aplicación principal que integra todas las herramientas:
 
 ```bash
-conda activate geo_interp
 python landxml_suite.py
 ```
 
-### Herramientas Individuales (Línea de Comandos)
+### Herramientas Individuales
+
+Puedes ejecutar cada herramienta por separado o usar la línea de comandos para automatización:
 
 ```bash
-# Visualizador
-python apps/landxml2image.py
+# Visualizador (GUI)
+python -m apps.landxml2image
 
 # Comparador (CLI)
-python apps/landxml_diff.py --file1 superficie1.xml --file2 superficie2.xml
+python -m apps.landxml_diff --file1 base.xml --file2 comparacion.xml
+```
+
+## Configuración Personalizada
+
+El comportamiento por defecto de las herramientas se controla mediante el archivo `config.json` en la raíz del proyecto. Puedes modificarlo para ajustar tus preferencias:
+
+```json
+{
+    "visualizador": {
+        "colormap": "gist_earth",
+        "whitening": 75,
+        "hillshade": 50,
+        "resolution": 0.05
+    },
+    "comparador": {
+        "colormap": "coolwarm_r",
+        "resolution": 0.05
+    }
+}
 ```
 
 ## Estructura del Proyecto
 
 ```
 landxml_tools/
-├── landxml_suite.py        # Punto de entrada principal
-├── apps/                   # Aplicaciones standalone y scripts
+├── config.json             # Archivo de configuración
+├── landxml_suite.py        # Lanzador principal
+├── apps/                   # Scripts de aplicación
 │   ├── landxml2image.py
-│   ├── landxml_diff.py
-│   └── landxml_diff_gui.py
+│   └── landxml_diff.py
 ├── src/
 │   └── landxml_tools/      # Librería compartida
-│       ├── gui/            # Widgets y tema visual
-│       ├── io/             # Lectura/escritura de archivos
-│       ├── processing/     # Algoritmos (TIN, rasterización)
-│       └── viz/            # Visualización (leyendas, gráficos)
-└── test/                   # Archivos de prueba
+│       ├── config.py       # Gestor de configuración
+│       ├── gui/            # Interfaz gráfica
+│       ├── io/             # Lectura/escritura (LandXML, GeoTIFF)
+│       ├── processing/     # Algoritmos (TIN, Raster, Hillshade)
+│       └── viz/            # Visualización
+└── test/                   # Tests
 ```
 
 ## 👤 Autor
