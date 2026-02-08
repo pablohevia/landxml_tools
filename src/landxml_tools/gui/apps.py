@@ -402,14 +402,26 @@ class LandXMLDiffGUI:
         threading.Thread(target=self._run_processing, daemon=True).start()
     def _run_processing(self):
         try:
-            from .apps import LandXMLDiffGUI
-            # Evitar importación circular si se moviera a otro lugar, pero aquí usamos apps/landxml_diff.py lógica
-            # En realidad, usaremos una versión local de la lógica o importaremos apps.landxml_diff si está en el path
-            # Pero para ser limpios, la lógica de landxml_diff debería estar en processing.diff
             from apps.landxml_diff import main as process_landxml_diff
-            success, message = process_landxml_diff(surface_file1=self.file1_path.get(), surface_file2=self.file2_path.get(), output_name=self.output_name_var.get().strip(), resolution=float(self.resolution_var.get()), epsg_code=int(self.epsg_var.get()), colormap=self.colormap_var.get(), save_jpg=self.save_jpg_var.get(), save_png=self.save_png_var.get(), save_tiff=self.save_tiff_var.get(), save_legend=self.save_legend_var.get(), output_dir=self.output_dir_var.get().strip() or None, class_interval=float(self.class_interval_var.get()) if self.classify_var.get() else None, whitening=self.whitening_var.get()/100.0, progress_callback=self._update_progress)
+            success, message = process_landxml_diff(
+                surface_file1=self.file1_path.get(),
+                surface_file2=self.file2_path.get(),
+                output_name=self.output_name_var.get().strip(),
+                resolution=float(self.resolution_var.get()),
+                epsg_code=int(self.epsg_var.get()),
+                colormap=self.colormap_var.get(),
+                save_jpg=self.save_jpg_var.get(),
+                save_png=self.save_png_var.get(),
+                save_tiff=self.save_tiff_var.get(),
+                save_legend=self.save_legend_var.get(),
+                output_dir=self.output_dir_var.get().strip() or None,
+                class_interval=float(self.class_interval_var.get()) if self.classify_var.get() else None,
+                whitening=self.whitening_var.get()/100.0,
+                progress_callback=self._update_progress
+            )
             self.root.after(0, self._on_complete, success, message)
-        except Exception as e: self.root.after(0, self._on_complete, False, str(e))
+        except Exception as e:
+            self.root.after(0, self._on_complete, False, str(e))
     def _on_complete(self, success, message):
         self.processing = False
         self.progress_bar.stop()
