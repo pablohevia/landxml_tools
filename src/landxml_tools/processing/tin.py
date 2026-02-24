@@ -58,6 +58,6 @@ def validate_and_clean_triangulation(points, triangles):
     
     n_removed = len(triangles) - len(valid_triangles)
     if n_removed > 0:
-        print(f"    ⚠ Triángulos degenerados removidos: {n_removed}/{len(triangles)}")
+        print(f"    [!] Triángulos degenerados removidos: {n_removed}/{len(triangles)}")
     
     return triangles_clean

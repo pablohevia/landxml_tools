@@ -63,6 +63,7 @@ def parse_landxml_surface(xml_file):
     
     # Extraer puntos
     points_list = []
+    id_to_index = {}
     p_elements = []
     for ns in namespaces:
         p_elements = pnts_container.findall('landxml:P', namespaces=ns)
@@ -82,8 +83,10 @@ def parse_landxml_surface(xml_file):
                     point_dict[p_id] = [float(coords[1]), float(coords[0]), float(coords[2])]
             except (ValueError, AttributeError):
                 continue
-        for p_id in sorted(point_dict.keys()):
+        sorted_ids = sorted(point_dict.keys())
+        for i, p_id in enumerate(sorted_ids):
             points_list.append(point_dict[p_id])
+            id_to_index[p_id] = i
     elif pnts_container.text and pnts_container.text.strip():
         for line in pnts_container.text.strip().split('\n'):
             coords = line.strip().split()
@@ -120,17 +123,25 @@ def parse_landxml_surface(xml_file):
                 try:
                     indices = f.text.strip().split()
                     if len(indices) >= 3:
-                        # 1-based → 0-based
-                        triangles_list.append([int(indices[0])-1, int(indices[1])-1, int(indices[2])-1])
-                except (ValueError, AttributeError):
+                        i0, i1, i2 = int(indices[0]), int(indices[1]), int(indices[2])
+                        if id_to_index:
+                            triangles_list.append([id_to_index[i0], id_to_index[i1], id_to_index[i2]])
+                        else:
+                            # 1-based → 0-based
+                            triangles_list.append([i0-1, i1-1, i2-1])
+                except (ValueError, AttributeError, KeyError):
                     continue
         elif faces_container.text and faces_container.text.strip():
             for line in faces_container.text.strip().split('\n'):
                 indices = line.strip().split()
                 if len(indices) >= 3:
                     try:
-                        triangles_list.append([int(indices[0])-1, int(indices[1])-1, int(indices[2])-1])
-                    except ValueError:
+                        i0, i1, i2 = int(indices[0]), int(indices[1]), int(indices[2])
+                        if id_to_index:
+                            triangles_list.append([id_to_index[i0], id_to_index[i1], id_to_index[i2]])
+                        else:
+                            triangles_list.append([i0-1, i1-1, i2-1])
+                    except (ValueError, KeyError):
                         continue
     
     triangles = np.array(triangles_list) if triangles_list else None

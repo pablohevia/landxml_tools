@@ -54,6 +54,8 @@ def rasterize_surface_tin(points, triangles, resolution=0.05, extent=None):
     
     # Crear triangulación
     triang = None
+    fallback_exact_rasterization = False
+    
     if triangles is not None:
         triangles_clean = validate_and_clean_triangulation(points, triangles)
         if triangles_clean is not None and len(triangles_clean) > 0:
@@ -62,39 +64,92 @@ def rasterize_surface_tin(points, triangles, resolution=0.05, extent=None):
                 _ = temp_triang.get_trifinder()
                 triang = temp_triang
             except Exception as e:
-                print(f"    ⚠ Triangulación original inválida: {e}")
+                print(f"    [!] Triangulación original inválida para Matplotlib: {e}")
                 triang = None
+                fallback_exact_rasterization = True
     
     if triang is None:
-        print("    ℹ Generando triangulación de Delaunay automática...")
-        # Eliminar duplicados para Delaunay
-        xy_points = np.column_stack((x, y))
-        _, unique_indices = np.unique(xy_points, axis=0, return_index=True)
-        
-        if len(unique_indices) < len(x):
-            x_clean = x[unique_indices]
-            y_clean = y[unique_indices]
-            z_clean = z[unique_indices]
-            triang = mtri.Triangulation(x_clean, y_clean)
-            z_used = z_clean
+        if fallback_exact_rasterization:
+            print("    [i] Ejecutando rasterizador bariocéntrico exacto para topología CAD...")
+            grid_z = np.full((num_pixels_y, num_pixels_x), np.nan)
+            
+            # Arrays de píxeles
+            y_arr = ymin + (np.arange(num_pixels_y) + 0.5) * resolution
+            x_arr = xmin + (np.arange(num_pixels_x) + 0.5) * resolution
+            
+            pt1 = points[triangles_clean[:,0]]
+            pt2 = points[triangles_clean[:,1]]
+            pt3 = points[triangles_clean[:,2]]
+            
+            # Bounding box numpy veloz
+            min_x = np.min([pt1[:,0], pt2[:,0], pt3[:,0]], axis=0)
+            max_x = np.max([pt1[:,0], pt2[:,0], pt3[:,0]], axis=0)
+            min_y = np.min([pt1[:,1], pt2[:,1], pt3[:,1]], axis=0)
+            max_y = np.max([pt1[:,1], pt2[:,1], pt3[:,1]], axis=0)
+            
+            min_col = np.floor((min_x - xmin) / resolution).astype(int).clip(0, num_pixels_x - 1)
+            max_col = np.ceil((max_x - xmin) / resolution).astype(int).clip(0, num_pixels_x - 1)
+            min_row = np.floor((min_y - ymin) / resolution).astype(int).clip(0, num_pixels_y - 1)
+            max_row = np.ceil((max_y - ymin) / resolution).astype(int).clip(0, num_pixels_y - 1)
+            
+            for i in range(len(triangles_clean)):
+                r_s, r_e = min_row[i], max_row[i] + 1
+                c_s, c_e = min_col[i], max_col[i] + 1
+                
+                yy = y_arr[r_s:r_e]
+                xx = x_arr[c_s:c_e]
+                if len(xx) == 0 or len(yy) == 0: continue
+                
+                grid_x, grid_y = np.meshgrid(xx, yy)
+                denom = (pt2[i,1] - pt3[i,1]) * (pt1[i,0] - pt3[i,0]) + (pt3[i,0] - pt2[i,0]) * (pt1[i,1] - pt3[i,1])
+                if denom == 0: continue
+                
+                w1 = ((pt2[i,1] - pt3[i,1]) * (grid_x - pt3[i,0]) + (pt3[i,0] - pt2[i,0]) * (grid_y - pt3[i,1])) / denom
+                w2 = ((pt3[i,1] - pt1[i,1]) * (grid_x - pt3[i,0]) + (pt1[i,0] - pt3[i,0]) * (grid_y - pt3[i,1])) / denom
+                w3 = 1.0 - w1 - w2
+                
+                # Tolerancia matemática minúscula para evitar agujeros entre triángulos colindantes
+                mask = (w1 >= -1e-5) & (w2 >= -1e-5) & (w3 >= -1e-5)
+                z_vals = w1 * pt1[i,2] + w2 * pt2[i,2] + w3 * pt3[i,2]
+                
+                subgrid = grid_z[r_s:r_e, c_s:c_e]
+                
+                # Solo reemplazar si es NaN para no sobreescribir doblemente a lo bruto
+                apply_mask = mask & np.isnan(subgrid)
+                subgrid[apply_mask] = z_vals[apply_mask]
+                grid_z[r_s:r_e, c_s:c_e] = subgrid
+                
+            return grid_z, [xmin, xmax, ymin, ymax]
         else:
-            triang = mtri.Triangulation(x, y)
-            z_used = z
+            print("    [i] Generando triangulación de Delaunay automática...")
+            # Eliminar duplicados para Delaunay
+            xy_points = np.column_stack((x, y))
+            _, unique_indices = np.unique(xy_points, axis=0, return_index=True)
+            
+            if len(unique_indices) < len(x):
+                x_clean = x[unique_indices]
+                y_clean = y[unique_indices]
+                z_clean = z[unique_indices]
+                triang = mtri.Triangulation(x_clean, y_clean)
+                z_used = z_clean
+            else:
+                triang = mtri.Triangulation(x, y)
+                z_used = z
     else:
         z_used = z
-
-    # Interpolación lineal
+    
+    # Interpolación lineal clásica de Matplotlib
     try:
         interpolator = mtri.LinearTriInterpolator(triang, z_used)
         grid_z = interpolator(xi_grid, yi_grid)
     except Exception as e:
-        print(f"    ❌ Error fatal en interpolación: {e}")
+        print(f"    [X] Error fatal en interpolación: {e}")
         return np.full(xi_grid.shape, np.nan), [xmin, xmax, ymin, ymax]
     
     # Convertir masked array a NaN
     if hasattr(grid_z, 'mask'):
         grid_z = np.ma.filled(grid_z, np.nan)
-    
+        
     return grid_z, [xmin, xmax, ymin, ymax]
 
 
