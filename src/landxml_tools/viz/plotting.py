@@ -32,7 +32,11 @@ def create_colormap_legend(grid, colormap='terrain', output_path=None,
     if len(valid_data) == 0:
         return
 
-    vmin, vmax = valid_data.min(), valid_data.max()
+    # Filtrado de ruido numérico (epsilon = 1mm)
+    EPSILON = 1e-3
+    valid_data_filtered = np.where(np.abs(valid_data) < EPSILON, 0.0, valid_data)
+    
+    vmin, vmax = valid_data_filtered.min(), valid_data_filtered.max()
     
     # Configurar normalización
     if center_zero:
@@ -56,10 +60,16 @@ def create_colormap_legend(grid, colormap='terrain', output_path=None,
     norm = norm_type
     if class_interval is not None and class_interval > 0:
         if center_zero:
-             # Para diferencias, aseguramos simetría
-            max_abs_disc = np.ceil(vmax / class_interval) * class_interval
-            vmin_disc = -max_abs_disc
-            vmax_disc = max_abs_disc
+            # Discretización simétrica igual que en save_colored_map
+            vmin_disc = np.sign(vmin) * np.floor(np.abs(vmin) / class_interval) * class_interval
+            vmax_disc = np.sign(vmax) * np.floor(np.abs(vmax) / class_interval) * class_interval
+            # Asegurar simetría perfecta
+            abs_max_disc = max(abs(vmin_disc), abs(vmax_disc))
+            vmin_disc = -abs_max_disc
+            vmax_disc = abs_max_disc
+            # Limpiar -0.0 -> 0.0
+            vmin_disc = 0.0 if abs(vmin_disc) < EPSILON else vmin_disc
+            vmax_disc = 0.0 if abs(vmax_disc) < EPSILON else vmax_disc
             boundaries = np.arange(vmin_disc, vmax_disc + class_interval + 0.001, class_interval)
             if len(boundaries) > 1:
                 norm = mcolors.BoundaryNorm(boundaries, cmap.N)
@@ -153,14 +163,21 @@ def save_colored_map(grid, output_name, colormap='terrain', output_dir=None,
     height, width = grid_to_plot.shape
     valid = ~np.isnan(grid_to_plot)
     
+    # Filtrado de ruido numérico (epsilon = 1mm)
+    EPSILON = 1e-3
+    grid_filtered = np.where(np.abs(grid_to_plot) < EPSILON, 0.0, grid_to_plot)
+    
     # Clasificación
     if class_interval is not None and class_interval > 0:
         if center_zero:
-            grid_to_plot_vals = np.floor(grid_to_plot / class_interval) * class_interval
+            # Discretización simétrica respecto al cero
+            grid_to_plot_vals = np.sign(grid_filtered) * np.floor(np.abs(grid_filtered) / class_interval) * class_interval
+            # Limpiar -0.0 -> 0.0
+            grid_to_plot_vals = np.where(np.abs(grid_to_plot_vals) < EPSILON, 0.0, grid_to_plot_vals)
         else:
-             grid_to_plot_vals = np.floor(grid_to_plot / class_interval) * class_interval
+             grid_to_plot_vals = np.floor(grid_filtered / class_interval) * class_interval
     else:
-        grid_to_plot_vals = grid_to_plot
+        grid_to_plot_vals = grid_filtered
 
     # Normalización y Color
     vmin, vmax = np.nanmin(grid_to_plot), np.nanmax(grid_to_plot)

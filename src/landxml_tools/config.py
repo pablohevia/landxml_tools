@@ -60,7 +60,7 @@ def load_config():
         },
         "comparador": {
             "colormap": "coolwarm_r",
-            "whitening": 0,
+            "whitening": 70,
             "hillshade": 0,
             "resolution": 0.05,
             "epsg": 25830,
