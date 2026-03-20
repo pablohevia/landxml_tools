@@ -12,14 +12,14 @@ Suite de herramientas para procesamiento y visualización de archivos LandXML.
 
 ## Características Destacadas
 
-*   **Visualización Topográfica Avanzada** (Opciones configurables):
-    *   **Clasificación por Elevación**: Genera mapas de colores basados en rangos de altura definidos por el usuario.
-    *   **Sombreado (Hillshade)**: Aplica efectos de relieve personalizables para resaltar la topografía del terreno.
-    *   **Control de Intensidad**: Ajuste de blanqueo (*whitening*) variable para suavizar la visualización y mejorar la legibilidad.
-*   **Georreferenciación Completa**:
-    *   Salida directa en formato **GeoTIFF**, manteniendo la información espacial precisa.
-    *   Generación automática de archivos **World File** (`.pgw`, `.jgw`) para formatos de imagen estándar (PNG, JPG), asegurando compatibilidad total con software CAD y GIS.
-    *   **Integración con AutoCAD**: Las imágenes georreferenciadas se pueden situar automáticamente en su posición correcta utilizando la herramienta [ImageGeoRef](https://github.com/pablohevia/ImageGeoRef).
+* **Visualización Topográfica Avanzada** (Opciones configurables):
+     * **Clasificación por Elevación**: Genera mapas de colores basados en rangos de altura definidos por el usuario.
+     * **Sombreado (Hillshade)**: Aplica efectos de relieve personalizables para resaltar la topografía del terreno.
+     * **Control de Intensidad**: Ajuste de blanqueo (*whitening*) variable para suavizar la visualización y mejorar la legibilidad.
+* **Georreferenciación Completa**:
+     * Salida directa en formato **GeoTIFF**, manteniendo la información espacial precisa.
+     * Generación automática de archivos **World File** (`.pgw`, `.jgw`) para formatos de imagen estándar (PNG, JPG), asegurando compatibilidad total con software CAD y GIS.
+     * **Integración con AutoCAD**: Las imágenes georreferenciadas se pueden situar automáticamente en su posición correcta utilizando la herramienta [ImageGeoRef](https://github.com/pablohevia/ImageGeoRef).
 
 ## Requisitos
 
@@ -31,18 +31,20 @@ Suite de herramientas para procesamiento y visualización de archivos LandXML.
 ## Instalación
 
 1. Clonar el repositorio:
+   
    ```bash
    git clone https://github.com/pablohevia/landxml_tools.git
    cd landxml_tools
    ```
 
 2. Crear un entorno virtual (recomendado):
+   
    ```bash
    # Opción A: Conda
    conda create -n landxml_env python=3.9 rasterio
    conda activate landxml_env
    pip install .
-
+   
    # Opción B: venv + pip
    python -m venv venv
    source venv/bin/activate  # En Windows: venv\Scripts\activate
@@ -108,6 +110,26 @@ landxml_tools/
 │       └── viz/            # Visualización
 └── test/                   # Tests
 ```
+
+## Capturas de Pantalla
+
+### Visualizador
+
+<div style="display: flex; gap: 10px; flex-wrap: wrap;">
+  <img src="img/01 Visualizador.png" width="48%">
+  <img src="img/03 Terreno.jpg" width="48%">
+</div>
+
+*GUI del Visualizador (izq.) y rasterización TIN del terreno (der.)*
+
+### Comparador
+
+<div style="display: flex; gap: 10px; flex-wrap: wrap;">
+  <img src="img/02 Comparador.png" width="48%">
+  <img src="img/04 Diferencias.png" width="48%">
+</div>
+
+*GUI del Comparador (izq.) y mapa de diferencias de cota entre fases (der.)*
 
 ## 👤 Autor
 
