@@ -1,9 +1,13 @@
-# LandXML Tools
+<h1 align="center">⛰️ LandXML Tools</h1>
 
-![Python](https://img.shields.io/badge/python-3.9%2B-blue)
-![License](https://img.shields.io/badge/license-GPLv3-green)
+<p align="center">
+  <img src="https://img.shields.io/badge/python-3.9%2B-blue" alt="Python">
+  <img src="https://img.shields.io/badge/license-GPLv3-green" alt="License">
+</p>
 
-Suite de herramientas para procesamiento y visualización de archivos LandXML.
+<p align="center">
+  <b>Suite de herramientas para procesamiento y visualización de archivos LandXML.</b>
+</p>
 
 ## Herramientas Incluidas
 
@@ -115,21 +119,37 @@ landxml_tools/
 
 ### Visualizador
 
-<div style="display: flex; gap: 10px; flex-wrap: wrap;">
-  <img src="img/01 Visualizador.png" width="48%">
-  <img src="img/03 Terreno.jpg" width="48%">
-</div>
-
-*GUI del Visualizador (izq.) y rasterización TIN del terreno (der.)*
+<table width="100%">
+  <tr>
+    <td width="50%" align="center">
+      <img src="img/01 Visualizador.png" alt="GUI del Visualizador" width="100%">
+    </td>
+    <td width="50%" align="center">
+      <img src="img/03 Terreno.jpg" alt="Rasterización del Terreno" width="100%">
+    </td>
+  </tr>
+  <tr>
+    <td align="center"><em>GUI del Visualizador</em></td>
+    <td align="center"><em>Rasterización TIN del terreno</em></td>
+  </tr>
+</table>
 
 ### Comparador
 
-<div style="display: flex; gap: 10px; flex-wrap: wrap;">
-  <img src="img/02 Comparador.png" width="48%">
-  <img src="img/04 Diferencias.png" width="48%">
-</div>
-
-*GUI del Comparador (izq.) y mapa de diferencias de cota entre fases (der.)*
+<table width="100%">
+  <tr>
+    <td width="50%" align="center">
+      <img src="img/02 Comparador.png" alt="GUI del Comparador" width="100%">
+    </td>
+    <td width="50%" align="center">
+      <img src="img/04 Diferencias.png" alt="Mapa de Diferencias" width="100%">
+    </td>
+  </tr>
+  <tr>
+    <td align="center"><em>GUI del Comparador</em></td>
+    <td align="center"><em>Mapa de diferencias de cota entre fases</em></td>
+  </tr>
+</table>
 
 ## 👤 Autor
 
