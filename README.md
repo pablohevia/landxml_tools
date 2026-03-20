@@ -11,12 +11,12 @@
 
 ## Herramientas Incluidas
 
-- **Visualizador** (`landxml2image`): Genera imágenes rasterizadas a partir de superficies TIN.
-- **Comparador** (`landxml_diff`): Compara dos superficies y genera mapas de diferencia.
+- **Generador de Imagen** (`landxml2image`): Convierte superficies LandXML en imágenes rasterizadas georreferenciadas.
+- **Comparador** (`landxml_diff`): Compara dos superficies y genera mapas de diferencia de cota.
 
 ## Características Destacadas
 
-* **Visualización Topográfica Avanzada** (Opciones configurables):
+* **Generación de Imagen Personalizable**:
      * **Clasificación por Elevación**: Genera mapas de colores basados en rangos de altura definidos por el usuario.
      * **Sombreado (Hillshade)**: Aplica efectos de relieve personalizables para resaltar la topografía del terreno.
      * **Control de Intensidad**: Ajuste de blanqueo (*whitening*) variable para suavizar la visualización y mejorar la legibilidad.
@@ -70,7 +70,7 @@ python landxml_suite.py
 Puedes ejecutar cada herramienta por separado o usar la línea de comandos para automatización:
 
 ```bash
-# Visualizador (GUI)
+# Generador de Imagen (GUI)
 python -m apps.landxml2image
 
 # Comparador (CLI)
@@ -117,20 +117,20 @@ landxml_tools/
 
 ## Capturas de Pantalla
 
-### Visualizador
+### Generador de Imagen
 
 <table width="100%">
   <tr>
     <td width="50%" align="center">
-      <img src="img/01 Visualizador.png" alt="GUI del Visualizador" width="100%">
+      <img src="img/01 Visualizador.png" alt="GUI del Generador" width="100%">
     </td>
     <td width="50%" align="center">
-      <img src="img/03 Terreno.jpg" alt="Rasterización del Terreno" width="100%">
+      <img src="img/03 Terreno.jpg" alt="Imagen Rasterizada" width="100%">
     </td>
   </tr>
   <tr>
-    <td align="center"><em>GUI del Visualizador</em></td>
-    <td align="center"><em>Rasterización TIN del terreno</em></td>
+    <td align="center"><em>Interfaz del Generador</em></td>
+    <td align="center"><em>Resultado de la rasterización TIN</em></td>
   </tr>
 </table>
 

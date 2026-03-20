@@ -179,24 +179,21 @@ VS Code settings (`.vscode/settings.json`):
 **Fecha:** 2026-03-16
 **Modelo que planificó:** Gemini 3 Flash
 **Revisado por:** MiniMax (minimax-m2.5-free)
+**Estado:** ✅ COMPLETADO
 
-### Pasos
+### Pasos ejecutados
 
-1. **Implementar discretización simétrica en `save_colored_map`**
+1. **Implementar discretización simétrica en `save_colored_map`** ✅
    - Archivo: `src/landxml_tools/viz/plotting.py`
-   - Cambio: editar
-   - Descripción: Modificar la lógica de discretización para que, cuando `center_zero=True`, las clases se calculen de forma simétrica respecto al origen. Usar `np.sign(val) * np.floor(np.abs(val) / interval) * interval` o similar para evitar el salto de 1 intervalo en el punto cero.
-   - **Nota:** Después de aplicar la fórmula, añadir limpieza de `-0.0` → `0.0` usando `np.where(np.abs(val) < epsilon, 0.0, val)` para evitar valores negativos cercan cero.
+   - Implementado: fórmula `np.sign(val) * np.floor(np.abs(val) / interval) * interval` con limpieza de -0.0
 
-2. **Añadir tolerancia de ruido (epsilon)**
+2. **Añadir tolerancia de ruido (epsilon)** ✅
    - Archivo: `src/landxml_tools/viz/plotting.py`
-   - Cambio: editar
-   - Descripción: Antes de clasificar, establecer a 0.0 todos los valores cuyo valor absoluto sea inferior a `1e-3` (1 mm). Este umbral refleja la precisión mínima del instrumento de medición: cualquier diferencia menor a 1 mm es ruido instrumental, no información real.
+   - Implementado: filtrado de valores con `|val| < 1e-3` → 0.0
 
-3. **Sincronizar límites en `create_colormap_legend`**
+3. **Sincronizar límites en `create_colormap_legend`** ✅
    - Archivo: `src/landxml_tools/viz/plotting.py`
-   - Cambio: editar
-   - Descripción: Asegurar que los `boundaries` de la leyenda coinciden exactamente con los centros de clase usados en el mapa.
+   - Implementado: misma fórmula de discretización simétrica en la leyenda
 
 ## Instrucciones para OpenCode
-Lee el plan activo arriba y ejecuta el paso 1. Reporta los cambios realizados y espera instrucciones para el siguiente paso.
+*(No hay plan activo pendiente - el anterior ya fue ejecutado)*
