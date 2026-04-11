@@ -175,25 +175,40 @@ VS Code settings (`.vscode/settings.json`):
 
 ## Plan activo
 
-**Objetivo:** Corregir artefactos visuales en la clasificación del Comparador mediante discretización simétrica y filtrado de ruido numérico.
-**Fecha:** 2026-03-16
+**Objetivo:** Migración Total de la Suite a PySide6 e Integración de Intersección 3D.
+**Fecha:** 2026-04-11
 **Modelo que planificó:** Gemini 3 Flash
-**Revisado por:** MiniMax (minimax-m2.5-free)
-**Estado:** ✅ COMPLETADO
+**Estado:** 🟠 BLUEPRINT (Esperando EJECUTA)
 
-### Pasos ejecutados
+### Pasos propuestos (MIGRACIÓN)
 
-1. **Implementar discretización simétrica en `save_colored_map`** ✅
-   - Archivo: `src/landxml_tools/viz/plotting.py`
-   - Implementado: fórmula `np.sign(val) * np.floor(np.abs(val) / interval) * interval` con limpieza de -0.0
+0. **Verificación de Entorno**
+   - Verificar la instalación conjunta de `PySide6` y `rasterio` en `conda`.
+   - Actualizar el archivo `README.md` con las nuevas instrucciones de instalación.
 
-2. **Añadir tolerancia de ruido (epsilon)** ✅
-   - Archivo: `src/landxml_tools/viz/plotting.py`
-   - Implementado: filtrado de valores con `|val| < 1e-3` → 0.0
+1. **Reconstrucción del Core GUI (PySide6) y Dependencias**
+   - Actualizar `pyproject.toml` (asegurando compatibilidad de `lxml` y `scipy`).
+   - Reimplementar `theme.py` (Tema Claro: `#f9f9f9`, `#ffffff`, `#0078d4`).
+   - Reimplementar `widgets.py` (Custom QWidgets: ModernButton, Card, DropZone).
+   - Añadir valores default a `config.py` para la herramienta de intersección.
 
-3. **Sincronizar límites en `create_colormap_legend`** ✅
-   - Archivo: `src/landxml_tools/viz/plotting.py`
-   - Implementado: misma fórmula de discretización simétrica en la leyenda
+2. **Integración de Intersección (Prioridad 1 en BUILD)**
+   - Migrar lógica a `src/landxml_tools/processing/intersection.py`, unificando el parser para usar `io/landxml.py`.
+   - Crear la GUI en `src/landxml_tools/gui/interseccion_gui.py` usando Signals (sin usar redirección global de `sys.stdout`).
+
+3. **Migración de Pestañas Existentes (Desacoplamiento)**
+   - Eliminar el monolito `apps.py`.
+   - Portar Visualizador a `src/landxml_tools/gui/visualizador_gui.py`.
+   - Portar Comparador a `src/landxml_tools/gui/comparador_gui.py`.
+
+4. **Orquestación de la Suite y Lanzadores**
+   - Nuevo `landxml_suite.py` basado en `QMainWindow` y `QTabWidget` para unir las 3 apps.
+   - Actualizar `LandXML Tools.bat` para el nuevo entry point.
+
+5. **Limpieza**
+   - Eliminar código huérfano de Tkinter.
 
 ## Instrucciones para OpenCode
-*(No hay plan activo pendiente - el anterior ya fue ejecutado)*
+- **IMPORTANTE**: No mezclar Tkinter con PySide6. La nueva arquitectura debe ser 100% Qt.
+- Usa el `implementation_plan.md` del cerebro para detalles técnicos de cada widget.
+- Asegura que `ezdxf` esté en las dependencias.

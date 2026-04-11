@@ -71,6 +71,12 @@ def load_config():
             "save_jpg": True,
             "save_tiff": True,
             "save_legend": True
+        },
+        "interseccion": {
+            "epsilon": 0.001,
+            "output_name": "interseccion",
+            "epsg_autodetect": True,
+            "epsg": 25830
         }
     }
     return _config

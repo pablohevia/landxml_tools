@@ -26,5 +26,11 @@
         "save_jpg": true,
         "save_tiff": true,
         "save_legend": true
+    },
+    "interseccion": {
+        "epsilon": 0.001,
+        "output_name": "interseccion",
+        "epsg_autodetect": true,
+        "epsg": 25830
     }
 }
