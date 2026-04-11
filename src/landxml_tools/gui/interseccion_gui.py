@@ -86,13 +86,9 @@ class LandXMLIntersectionGUI(QWidget):
         root.setSpacing(SPACING['sm'])
 
         scroll = QScrollArea()
-        scroll.setObjectName("MainScroll")
         scroll.setWidgetResizable(True)
-        scroll.setStyleSheet("#MainScroll { border: none; background: transparent; }")
 
         container = QWidget()
-        container.setObjectName("MainContainer")
-        container.setStyleSheet("#MainContainer { background: transparent; }")
         layout = QVBoxLayout(container)
         layout.setSpacing(SPACING['md'])
         layout.setContentsMargins(0, 0, 0, 0)
@@ -121,8 +117,7 @@ class LandXMLIntersectionGUI(QWidget):
 
         # Ruta de salida
         out_row = QWidget()
-        out_row.setObjectName("OutRowContainer")
-        out_row.setStyleSheet("#OutRowContainer { background: transparent; border: none; }")
+        out_row.setProperty("class", "HRow")
         out_hl = QHBoxLayout(out_row)
         out_hl.setContentsMargins(0, 0, 0, 0)
         out_hl.addWidget(QLabel("Salida DXF:"))
@@ -139,8 +134,7 @@ class LandXMLIntersectionGUI(QWidget):
 
         # Epsilon + EPSG
         params_row = QWidget()
-        params_row.setObjectName("ParamsRowContainer")
-        params_row.setStyleSheet("#ParamsRowContainer { background: transparent; border: none; }")
+        params_row.setProperty("class", "HRow")
         params_hl = QHBoxLayout(params_row)
         params_hl.setContentsMargins(0, 0, 0, 0)
         params_hl.setSpacing(SPACING['lg'])
@@ -185,11 +179,11 @@ class LandXMLIntersectionGUI(QWidget):
         self._console = QTextEdit()
         self._console.setObjectName("ConsoleLog")
         self._console.setReadOnly(True)
-        self._console.setMinimumHeight(200)
+        self._console.setMinimumHeight(140)
         log_layout.addWidget(self._console)
+        card_log.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         layout.addWidget(card_log)
 
-        layout.addStretch()
         scroll.setWidget(container)
         root.addWidget(scroll)
 

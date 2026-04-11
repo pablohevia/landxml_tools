@@ -49,10 +49,10 @@ FONTS = {
 
 SPACING = {
     'xs':  4,
-    'sm':  8,
-    'md': 12,
-    'lg': 16,
-    'xl': 24,
+    'sm':  6,
+    'md': 10,
+    'lg': 14,
+    'xl': 20,
 }
 
 # =============================================================================
@@ -62,31 +62,43 @@ SPACING = {
 def get_stylesheet() -> str:
     """
     Retorna el stylesheet QSS global para la aplicación.
-
-    Returns:
-        str: Cadena de texto con los estilos CSS de Qt.
     """
     c = COLORS
     f = FONTS
     return f"""
-/* --- Ventana y fondo --- */
+/* --- Estilos base --- */
 QMainWindow {{
     background-color: {c['bg_app']};
-    font-family: '{f['family']}';
-    font-size: {f['size_body']}pt;
-    color: {c['text_primary']};
 }}
+
 QWidget {{
     font-family: '{f['family']}';
     font-size: {f['size_body']}pt;
     color: {c['text_primary']};
 }}
-QLabel, QCheckBox, QRadioButton {{
+
+/* Forzamos que los labels y contenedores no tengan borde por defecto */
+QLabel, QFrame, QScrollArea {{
+    border: none;
+    background: transparent;
+}}
+
+/* --- Contenedores Especiales --- */
+
+/* Tarjetas (Card) */
+QFrame[class="Card"] {{
+    background-color: {c['bg_white']};
+    border: 1px solid {c['border']};
+    border-radius: 8px;
+}}
+
+/* Filas Horizontales (HRow) */
+QWidget[class="HRow"] {{
     background: transparent;
     border: none;
 }}
 
-/* --- Pestaña (Tab) --- */
+/* Pestaña (Tab) */
 QTabWidget::pane {{
     border: 1px solid {c['border']};
     border-radius: 0px;
@@ -100,8 +112,6 @@ QTabBar::tab {{
     border-bottom: none;
     border-top-left-radius: 6px;
     border-top-right-radius: 6px;
-    font-size: {f['size_body']}pt;
-    font-family: '{f['family']}';
     min-width: 120px;
 }}
 QTabBar::tab:selected {{
@@ -114,15 +124,13 @@ QTabBar::tab:hover:!selected {{
     color: {c['primary']};
 }}
 
-/* --- Botón genérico --- */
+/* --- Botones --- */
 QPushButton {{
     background-color: #e0e0e0;
     color: {c['text_primary']};
     border: none;
     border-radius: 6px;
     padding: 7px 16px;
-    font-family: '{f['family']}';
-    font-size: {f['size_body']}pt;
     font-weight: 600;
 }}
 QPushButton:hover {{
@@ -133,7 +141,7 @@ QPushButton:disabled {{
     color: {c['text_muted']};
 }}
 
-/* --- Botón primario de acción --- */
+/* Botón Primario */
 QPushButton#PrimaryButton {{
     background-color: {c['primary']};
     color: #ffffff;
@@ -149,43 +157,37 @@ QPushButton#PrimaryButton:disabled {{
     border: 1px solid #bbbbbb;
 }}
 
-/* --- Botón de búsqueda (Browse) --- */
+/* Botón de búsqueda (Browse) */
 QPushButton#BrowseButton {{
     background-color: #eeeeee;
     color: #333333;
     border: 1px solid #999999;
     border-radius: 4px;
     padding: 5px 12px;
-    font-weight: bold;
     font-size: 9pt;
 }}
 QPushButton#BrowseButton:hover {{
     background-color: #e0e0e0;
-    border: 1px solid #0078d4;
-}}
-QPushButton#BrowseButton:pressed {{
-    background-color: #cccccc;
+    border: 1px solid {c['primary']};
 }}
 
 /* --- Zona Drop --- */
-QFrame#DropZone {{
+QFrame[class="FileDropBox"] {{
     background-color: {c['bg_white']};
     border: 2px dashed {c['border']};
     border-radius: 12px;
 }}
-QFrame#DropZone[hover="true"] {{
+QFrame[class="FileDropBox"][state="hover"] {{
     border: 2px dashed {c['primary']};
     background-color: {c['primary_light']};
 }}
 
-/* --- Inputs --- */
+/* --- Inputs y Controles de Edición --- */
 QLineEdit, QDoubleSpinBox, QSpinBox {{
     background-color: {c['input_bg']};
     border: 1px solid #b3b3b3;
     border-radius: 4px;
     padding: 5px 8px;
-    font-family: '{f['family']}';
-    font-size: {f['size_body']}pt;
     color: {c['text_primary']};
 }}
 QLineEdit:focus, QDoubleSpinBox:focus, QSpinBox:focus {{
@@ -194,17 +196,16 @@ QLineEdit:focus, QDoubleSpinBox:focus, QSpinBox:focus {{
 }}
 QLineEdit:read-only {{
     background-color: #f1f1f1;
-    border: 2px solid #cccccc;
+    border: 1px solid #cccccc;
     color: {c['text_secondary']};
 }}
 
-/* --- Lista --- */
+/* --- Listas y Consolas --- */
 QListWidget {{
     background-color: {c['bg_white']};
     border: 1px solid {c['border']};
     border-radius: 8px;
     padding: 4px;
-    font-size: {f['size_body']}pt;
 }}
 QListWidget::item:selected {{
     background-color: {c['primary_light']};
@@ -212,7 +213,6 @@ QListWidget::item:selected {{
     border-radius: 4px;
 }}
 
-/* --- Consola de log --- */
 QTextEdit#ConsoleLog {{
     background-color: {c['console_bg']};
     color: {c['console_fg']};
@@ -220,10 +220,9 @@ QTextEdit#ConsoleLog {{
     font-size: {f['size_small']}pt;
     border-radius: 8px;
     padding: 8px;
-    border: none;
 }}
 
-/* --- Labels de sección --- */
+/* --- Miscelánea --- */
 QLabel#SectionLabel {{
     color: {c['text_secondary']};
     font-size: {f['size_small']}pt;
@@ -231,49 +230,6 @@ QLabel#SectionLabel {{
     letter-spacing: 0.5px;
 }}
 
-/* --- Separador --- */
-QFrame[frameShape="4"],
-QFrame[frameShape="5"] {{
-    color: {c['border']};
-}}
-
-/* --- Checkbox --- */
-QCheckBox {{
-    spacing: 8px;
-    font-size: {f['size_body']}pt;
-    color: {c['text_primary']};
-}}
-QCheckBox::indicator {{
-    width: 16px;
-    height: 16px;
-    border: 1px solid {c['border']};
-    border-radius: 3px;
-    background-color: {c['input_bg']};
-}}
-QCheckBox::indicator:checked {{
-    background-color: {c['primary']};
-    border-color: {c['primary']};
-}}
-
-/* --- ScrollBar --- */
-QScrollBar:vertical {{
-    width: 8px;
-    background: transparent;
-    margin: 0;
-}}
-QScrollBar::handle:vertical {{
-    background: {c['border']};
-    border-radius: 4px;
-    min-height: 24px;
-}}
-QScrollBar::handle:vertical:hover {{
-    background: {c['text_muted']};
-}}
-QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
-    height: 0;
-}}
-
-/* --- Barra de progreso --- */
 QProgressBar {{
     border: 1px solid {c['border']};
     border-radius: 6px;
@@ -284,5 +240,16 @@ QProgressBar {{
 QProgressBar::chunk {{
     background-color: {c['primary']};
     border-radius: 5px;
+}}
+
+QScrollBar:vertical {{
+    width: 8px;
+    background: transparent;
+    margin: 0;
+}}
+QScrollBar::handle:vertical {{
+    background: {c['border']};
+    border-radius: 4px;
+    min-height: 24px;
 }}
 """

@@ -136,12 +136,8 @@ class LandXMLVisualizadorGUI(QWidget):
         root.setSpacing(SPACING['sm'])
 
         scroll = QScrollArea()
-        scroll.setObjectName("MainScroll")
         scroll.setWidgetResizable(True)
-        scroll.setStyleSheet("#MainScroll { border: none; background: transparent; }")
         container = QWidget()
-        container.setObjectName("MainContainer")
-        container.setStyleSheet("#MainContainer { background: transparent; }")
         layout = QVBoxLayout(container)
         layout.setSpacing(SPACING['md'])
         layout.setContentsMargins(0, 0, 0, 0)
@@ -202,7 +198,6 @@ class LandXMLVisualizadorGUI(QWidget):
         row_cmap.add(self._cmap_combo)
         self._preview_lbl = QLabel()
         self._preview_lbl.setFixedSize(160, 22)
-        self._preview_lbl.setStyleSheet("border: 1px solid #cccccc; border-radius: 3px;")
         row_cmap.add(self._preview_lbl)
         row_cmap.addStretch()
         pl.addWidget(row_cmap)
@@ -230,7 +225,6 @@ class LandXMLVisualizadorGUI(QWidget):
         ol.addWidget(fmt_row)
 
         sep = QFrame(); sep.setFrameShape(QFrame.HLine)
-        sep.setStyleSheet(f"color: {COLORS['border']};")
         ol.addWidget(sep)
 
         class_row = _HRow()
@@ -263,8 +257,9 @@ class LandXMLVisualizadorGUI(QWidget):
         self._console = QTextEdit()
         self._console.setObjectName("ConsoleLog")
         self._console.setReadOnly(True)
-        self._console.setMinimumHeight(120)
+        self._console.setMinimumHeight(100)
         log_layout.addWidget(self._console)
+        card_log.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         layout.addWidget(card_log)
 
         # ---Progreso + estado ---
@@ -274,12 +269,7 @@ class LandXMLVisualizadorGUI(QWidget):
         self._progress.setVisible(False)
         layout.addWidget(self._progress)
 
-        self._status = QLabel("Seleccione un archivo para comenzar")
-        self._status.setStyleSheet(f"color: {COLORS['text_muted']}; font-size: {FONTS['size_small']}pt;")
-        self._status.setAlignment(Qt.AlignCenter)
-        layout.addWidget(self._status)
 
-        layout.addStretch()
         scroll.setWidget(container)
         root.addWidget(scroll)
 
@@ -328,9 +318,8 @@ class LandXMLVisualizadorGUI(QWidget):
         detected = self._detect_epsg_from_coordinates(path)
         self._epsg_spin.setValue(detected)
         
+        self._log("✓ Archivo cargado: Listo para procesar")
         self._btn_run.setEnabled(True)
-        self._status.setText("✓ Listo para procesar")
-        self._status.setStyleSheet(f"color: {COLORS['success']}; font-size: {FONTS['size_small']}pt;")
 
     def _select_output(self):
         # Usar getSaveFileName para obtener ruta completa de salida
@@ -421,20 +410,16 @@ class LandXMLVisualizadorGUI(QWidget):
         self._thread.start()
 
     def _on_progress(self, msg: str, pct: int):
-        self._status.setText(msg)
-        self._status.setStyleSheet(f"color: {COLORS['primary']}; font-size: {FONTS['size_small']}pt;")
         self._progress.setValue(pct)
 
     def _on_done(self, success: bool, msg: str):
         self._btn_run.setEnabled(True)
         self._progress.setValue(100)
         if success:
-            self._status.setText("✓ Proceso completado")
-            self._status.setStyleSheet(f"color: {COLORS['success']}; font-size: {FONTS['size_small']}pt;")
+            self._log(f"✓ {msg}")
             QMessageBox.information(self, "Éxito", msg)
         else:
-            self._status.setText("✗ Error")
-            self._status.setStyleSheet(f"color: {COLORS['danger']}; font-size: {FONTS['size_small']}pt;")
+            self._log(f"✗ ERROR: {msg}")
             QMessageBox.critical(self, "Error", f"Ocurrió un error:\n\n{msg[:600]}")
         self._progress.setVisible(False)
 
@@ -492,8 +477,7 @@ class _HRow(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setObjectName("HRowContainer")
-        self.setStyleSheet("#HRowContainer { background: transparent; border: none; }")
+        self.setProperty("class", "HRow")
         self._layout = QHBoxLayout(self)
         self._layout.setContentsMargins(0, 0, 0, 0)
         self._layout.setSpacing(SPACING['sm'])
