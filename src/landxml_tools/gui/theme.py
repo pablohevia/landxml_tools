@@ -70,11 +70,20 @@ def get_stylesheet() -> str:
     f = FONTS
     return f"""
 /* --- Ventana y fondo --- */
-QMainWindow, QWidget {{
+QMainWindow {{
     background-color: {c['bg_app']};
     font-family: '{f['family']}';
     font-size: {f['size_body']}pt;
     color: {c['text_primary']};
+}}
+QWidget {{
+    font-family: '{f['family']}';
+    font-size: {f['size_body']}pt;
+    color: {c['text_primary']};
+}}
+QLabel, QCheckBox, QRadioButton {{
+    background: transparent;
+    border: none;
 }}
 
 /* --- Pestaña (Tab) --- */
@@ -135,8 +144,27 @@ QPushButton#PrimaryButton:hover {{
     background-color: {c['primary_hover']};
 }}
 QPushButton#PrimaryButton:disabled {{
+    background-color: #d1d1d1;
+    color: #666666;
+    border: 1px solid #bbbbbb;
+}}
+
+/* --- Botón de búsqueda (Browse) --- */
+QPushButton#BrowseButton {{
+    background-color: #eeeeee;
+    color: #333333;
+    border: 1px solid #999999;
+    border-radius: 4px;
+    padding: 5px 12px;
+    font-weight: bold;
+    font-size: 9pt;
+}}
+QPushButton#BrowseButton:hover {{
+    background-color: #e0e0e0;
+    border: 1px solid #0078d4;
+}}
+QPushButton#BrowseButton:pressed {{
     background-color: #cccccc;
-    color: #888888;
 }}
 
 /* --- Zona Drop --- */
@@ -151,26 +179,23 @@ QFrame#DropZone[hover="true"] {{
 }}
 
 /* --- Inputs --- */
-QLineEdit, QDoubleSpinBox, QSpinBox, QComboBox {{
+QLineEdit, QDoubleSpinBox, QSpinBox {{
     background-color: {c['input_bg']};
-    border: 1px solid {c['border']};
-    border-radius: 6px;
-    padding: 6px 8px;
+    border: 1px solid #b3b3b3;
+    border-radius: 4px;
+    padding: 5px 8px;
     font-family: '{f['family']}';
     font-size: {f['size_body']}pt;
     color: {c['text_primary']};
-    selection-background-color: {c['primary']};
 }}
 QLineEdit:focus, QDoubleSpinBox:focus, QSpinBox:focus {{
     border: 1px solid {c['primary']};
+    background-color: {c['bg_white']};
 }}
 QLineEdit:read-only {{
     background-color: #f1f1f1;
+    border: 2px solid #cccccc;
     color: {c['text_secondary']};
-}}
-QComboBox::drop-down {{
-    border: none;
-    padding-right: 8px;
 }}
 
 /* --- Lista --- */

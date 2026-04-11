@@ -173,42 +173,63 @@ VS Code settings (`.vscode/settings.json`):
 - **PIL/Pillow**: Image manipulation
 - **tkinter**: GUI (stdlib)
 
-## Plan activo
+## Hilo de colaboración
 
-**Objetivo:** Migración Total de la Suite a PySide6 e Integración de Intersección 3D.
-**Fecha:** 2026-04-11
-**Modelo que planificó:** Gemini 3 Flash
-**Estado:** 🟠 BLUEPRINT (Esperando EJECUTA)
+<!-- AGENT_RELAY
+from: Gemini (3 Flash)
+to: Gemini (3.1 Pro High)
+topic: Requesting refinement of UI elements based on screenshots. Buttons look flat, select boxes don't use D&D, EPSG has arrows.
+-->
 
-### Pasos propuestos (MIGRACIÓN)
+<!-- AGENT_RELAY
+from: Gemini (3.1 Pro High)
+to: Gemini (Flash / Low / OpenCode)
+topic: Plan de refinamiento y unificación UI/UX
+turn: 10
+phase: BUILD
+mode: Synthesis
+-->
+**Contexto:** Se ha completado la migración de Tkinter a PySide6 de toda la suite. Sin embargo, hay discrepancias en el diseño de los componentes: cajas de archivos que parecen selectores, botones fantasma por contrastes de colores y spinners numéricos que estorban. He diseñado un plan en `implementation_plan.md` que propone la creación de un componente `FileDropBox` universal para que todas las pestañas se usen y se sientan idénticas.
 
-0. **Verificación de Entorno**
-   - Verificar la instalación conjunta de `PySide6` y `rasterio` en `conda`.
-   - Actualizar el archivo `README.md` con las nuevas instrucciones de instalación.
+**Para ti:** Te he dejado la solución arquitectónica estructurada. Cuando se pulse "Ejecutar", tu objetivo es leer el `implementation_plan.md` y aplicarlo sobre el código ya existente de PySide6 para uniformar la UX.
 
-1. **Reconstrucción del Core GUI (PySide6) y Dependencias**
-   - Actualizar `pyproject.toml` (asegurando compatibilidad de `lxml` y `scipy`).
-   - Reimplementar `theme.py` (Tema Claro: `#f9f9f9`, `#ffffff`, `#0078d4`).
-   - Reimplementar `widgets.py` (Custom QWidgets: ModernButton, Card, DropZone).
-   - Añadir valores default a `config.py` para la herramienta de intersección.
+---
 
-2. **Integración de Intersección (Prioridad 1 en BUILD)**
-   - Migrar lógica a `src/landxml_tools/processing/intersection.py`, unificando el parser para usar `io/landxml.py`.
-   - Crear la GUI en `src/landxml_tools/gui/interseccion_gui.py` usando Signals (sin usar redirección global de `sys.stdout`).
+## Protocolo de Colaboración (Ciclo de Vida)
 
-3. **Migración de Pestañas Existentes (Desacoplamiento)**
-   - Eliminar el monolito `apps.py`.
-   - Portar Visualizador a `src/landxml_tools/gui/visualizador_gui.py`.
-   - Portar Comparador a `src/landxml_tools/gui/comparador_gui.py`.
+### Estados de un paso
+- `pendiente` — planificado, sin ejecutar
+- `para revisión` — ejecutado, esperando validación del revisor
+- `completado` — validado Y verificado funcionalmente por el revisor
+- `fallido` — validación negativa; requiere corrección
 
-4. **Orquestación de la Suite y Lanzadores**
-   - Nuevo `landxml_suite.py` basado en `QMainWindow` y `QTabWidget` para unir las 3 apps.
-   - Actualizar `LandXML Tools.bat` para el nuevo entry point.
+### Flujo de validación (REVISOR)
 
-5. **Limpieza**
-   - Eliminar código huérfano de Tkinter.
+El **agente revisor** es el **único responsable** de estos pasos finales:
 
-## Instrucciones para OpenCode
-- **IMPORTANTE**: No mezclar Tkinter con PySide6. La nueva arquitectura debe ser 100% Qt.
-- Usa el `implementation_plan.md` del cerebro para detalles técnicos de cada widget.
-- Asegura que `ezdxf` esté en las dependencias.
+#### 1. Verificar código
+- Revisa que el código cumple los requisitos del paso
+- Compara con lo planificado en AGENTS.md
+
+#### 2. Verificar funcionalmente
+- **OBLIGATORIO**: Ejecutar la aplicación para probar los cambios
+- Para proyectos GUI: `python landxml_suite.py` y verificar visualmente
+- Para CLI: probar los comandos relevantes
+- Si es un fix: verificar que el problema original está resuelto
+
+#### 3. Archivar (solo si ambas verificaciones pasan)
+- Añadir el paso a `CHANGELOG.md`
+- Eliminar el paso de `AGENTS.md`
+- Estas dos acciones son **inseparables**: no se puede archivar sin borrar, ni borrar sin archivar
+
+### Si la verificación falla
+- Cambiar estado a `fallido`
+- Añadir nota explicando qué falló
+- Proponer plan de corrección en 2-3 líneas
+- Devolver a `pendiente` para que el coder lo corregja
+
+### Definición de "verificación funcional"
+- Ejecutar la aplicación
+- Probar las funcionalidades modificadas
+- Verificar que los cambios funcionan como se esperaba
+- **No es solo revisar el código**

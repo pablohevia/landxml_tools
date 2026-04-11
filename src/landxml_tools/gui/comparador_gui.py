@@ -11,13 +11,14 @@ from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
     QPushButton, QDoubleSpinBox, QSpinBox, QComboBox, QSlider,
     QCheckBox, QFileDialog, QMessageBox, QProgressBar,
-    QScrollArea, QSizePolicy, QFrame
+    QScrollArea, QSizePolicy, QFrame, QAbstractSpinBox,
+    QListWidget, QTextEdit, QMenu
 )
 from PySide6.QtCore import Qt, QThread, Signal, QObject
 from PySide6.QtGui import QPixmap, QPainter, QLinearGradient, QColor
 
 from .theme import COLORS, FONTS, SPACING
-from .widgets import Card, FileSelector
+from .widgets import Card, FileDropBox
 from .visualizador_gui import _HRow   # helper compartido
 
 
@@ -29,6 +30,7 @@ class _ComparadorWorker(QObject):
     """Hilo de procesamiento para el Comparador."""
 
     progress = Signal(str, int)
+    log      = Signal(str)        # mensaje de log en tiempo real
     done     = Signal(bool, str)
 
     def __init__(self, params: dict):
@@ -38,12 +40,18 @@ class _ComparadorWorker(QObject):
     def run(self):
         try:
             from apps.landxml_diff import main as process_diff
+            import os
 
             p = self._p
+            self.log.emit(f"> Leyendo {os.path.basename(p['file1'])}...")
+            self.progress.emit("Leyendo archivos LandXML...", 10)
 
             def cb(msg, pct=None):
                 self.progress.emit(msg, pct or 0)
 
+            self.log.emit("> Parseando superficies...")
+            self.log.emit(f"> Leyendo {os.path.basename(p['file2'])}...")
+            self.log.emit("> Calculando diferencias...")
             success, message = process_diff(
                 surface_file1=p['file1'],
                 surface_file2=p['file2'],
@@ -60,9 +68,11 @@ class _ComparadorWorker(QObject):
                 whitening=p['whitening'] / 100.0,
                 progress_callback=cb
             )
+            self.log.emit("> Generando imágenes...")
             self.done.emit(success, message)
         except Exception as exc:
             import traceback
+            self.log.emit(f"✗ ERROR: {exc}")
             self.done.emit(False, traceback.format_exc())
 
 
@@ -91,14 +101,16 @@ class LandXMLComparadorGUI(QWidget):
 
     def _build_ui(self):
         root = QVBoxLayout(self)
-        root.setContentsMargins(SPACING['xl'], SPACING['xl'], SPACING['xl'], SPACING['xl'])
-        root.setSpacing(SPACING['md'])
+        root.setContentsMargins(SPACING['md'], SPACING['md'], SPACING['md'], SPACING['md'])
+        root.setSpacing(SPACING['sm'])
 
         scroll = QScrollArea()
+        scroll.setObjectName("MainScroll")
         scroll.setWidgetResizable(True)
-        scroll.setStyleSheet("QScrollArea { border: none; background: transparent; }")
+        scroll.setStyleSheet("#MainScroll { border: none; background: transparent; }")
         container = QWidget()
-        container.setStyleSheet("background: transparent;")
+        container.setObjectName("MainContainer")
+        container.setStyleSheet("#MainContainer { background: transparent; }")
         layout = QVBoxLayout(container)
         layout.setSpacing(SPACING['md'])
         layout.setContentsMargins(0, 0, 0, 0)
@@ -106,12 +118,18 @@ class LandXMLComparadorGUI(QWidget):
         # --- Archivos ---
         card_files = Card(self, "Archivos de Entrada")
         fl = card_files.content_layout()
-        self._file1_sel = FileSelector("Superficie Base (1)", parent=self)
-        self._file1_sel.fileSelected.connect(lambda _: self._check_ready())
-        fl.addWidget(self._file1_sel)
-        self._file2_sel = FileSelector("Superficie a Comparar (2)", parent=self)
-        self._file2_sel.fileSelected.connect(self._on_file2_selected)
-        fl.addWidget(self._file2_sel)
+        self._file_drop = FileDropBox(mode='multi', parent=self)
+        self._file_drop.filesSelected.connect(self._on_files_selected)
+        fl.addWidget(self._file_drop)
+        
+        # Lista de archivos cargados
+        self._file_list = QListWidget()
+        self._file_list.setMaximumHeight(60)
+        self._file_list.setSelectionMode(QListWidget.ExtendedSelection)
+        self._file_list.setContextMenuPolicy(Qt.CustomContextMenu)
+        self._file_list.customContextMenuRequested.connect(self._show_ctx_menu)
+        fl.addWidget(self._file_list)
+        
         layout.addWidget(card_files)
 
         # --- Parámetros ---
@@ -130,28 +148,23 @@ class LandXMLComparadorGUI(QWidget):
         self._epsg_spin = QSpinBox()
         self._epsg_spin.setRange(1024, 99999)
         self._epsg_spin.setValue(self._cfg.get('epsg', 25830))
+        self._epsg_spin.setButtonSymbols(QAbstractSpinBox.NoButtons)
         row1.add(self._epsg_spin)
         row1.addStretch()
         pl.addWidget(row1)
 
-        row_name = _HRow()
-        row_name.add(QLabel("Nombre salida:"), fixed_width=130)
-        self._name_edit = QLineEdit(self._cfg.get('output_name', 'diferencia'))
-        row_name.add(self._name_edit)
-        pl.addWidget(row_name)
-
-        row_dir = _HRow()
-        row_dir.add(QLabel("Directorio salida:"), fixed_width=130)
-        self._dir_edit = QLineEdit()
-        self._dir_edit.setReadOnly(True)
-        self._dir_edit.setPlaceholderText("(mismo que el archivo por defecto)")
-        row_dir.add(self._dir_edit)
-        btn_dir = QPushButton("Browse")
-        btn_dir.setFixedWidth(80)
-        btn_dir.setCursor(Qt.PointingHandCursor)
-        btn_dir.clicked.connect(self._select_dir)
-        row_dir.add(btn_dir)
-        pl.addWidget(row_dir)
+        row_out = _HRow()
+        row_out.add(QLabel("Salida:"), fixed_width=130)
+        self._out_edit = QLineEdit()
+        self._out_edit.setPlaceholderText("Ruta completa del archivo de salida...")
+        row_out.add(self._out_edit)
+        btn_out = QPushButton("Examinar")
+        btn_out.setObjectName("BrowseButton")
+        btn_out.setFixedWidth(90)
+        btn_out.setCursor(Qt.PointingHandCursor)
+        btn_out.clicked.connect(self._select_output)
+        row_out.add(btn_out)
+        pl.addWidget(row_out)
 
         # Mapa de color
         row_cmap = _HRow()
@@ -224,6 +237,16 @@ class LandXMLComparadorGUI(QWidget):
         self._progress.setVisible(False)
         layout.addWidget(self._progress)
 
+        # --- Log de proceso ---
+        card_log = Card(self, "LOG DE PROCESO")
+        log_layout = card_log.content_layout()
+        self._console = QTextEdit()
+        self._console.setObjectName("ConsoleLog")
+        self._console.setReadOnly(True)
+        self._console.setMinimumHeight(120)
+        log_layout.addWidget(self._console)
+        layout.addWidget(card_log)
+
         self._status = QLabel("Seleccione los archivos para comenzar")
         self._status.setStyleSheet(f"color: {COLORS['text_muted']}; font-size: {FONTS['size_small']}pt;")
         self._status.setAlignment(Qt.AlignCenter)
@@ -262,24 +285,43 @@ class LandXMLComparadorGUI(QWidget):
     # Handlers
     # -------------------------------------------------------------------------
 
-    def _on_file2_selected(self, path: str):
-        if not self._out_dir:
-            self._out_dir = os.path.dirname(path)
-            self._dir_edit.setText(self._out_dir)
-        self._check_ready()
+    def _on_files_selected(self, files: list):
+        """Maneja la selección de archivos desde FileDropBox."""
+        if len(files) >= 1:
+            basename = os.path.splitext(os.path.basename(files[0]))[0]
+            default_path = os.path.join(os.path.dirname(files[0]), f"{basename}_diff")
+            self._out_edit.setText(os.path.normpath(default_path))
+            # Detectar EPSG desde coordenadas
+            detected = self._detect_epsg_from_coordinates(files[0])
+            self._epsg_spin.setValue(detected)
+        if len(files) >= 2:
+            self._check_ready()
+        
+        # Actualizar la lista de archivos
+        self._file_list.clear()
+        for f in files:
+            self._file_list.addItem(os.path.basename(f))
 
     def _check_ready(self):
-        ready = bool(self._file1_sel.get_path()) and bool(self._file2_sel.get_path())
+        files = self._file_drop.get_files()
+        ready = len(files) >= 2
         self._btn_run.setEnabled(ready)
         if ready:
             self._status.setText("✓ Listo para procesar")
             self._status.setStyleSheet(f"color: {COLORS['success']}; font-size: {FONTS['size_small']}pt;")
 
-    def _select_dir(self):
-        d = QFileDialog.getExistingDirectory(self, "Directorio de salida", self._out_dir)
-        if d:
-            self._out_dir = d
-            self._dir_edit.setText(d)
+    def _select_output(self):
+        current = self._out_edit.text()
+        default_dir = os.path.dirname(current) if current else ""
+        default_name = os.path.basename(current) if current else "diferencia.tif"
+        
+        path, _ = QFileDialog.getSaveFileName(
+            self, "Guardar archivo de salida", 
+            os.path.join(default_dir, default_name),
+            "GeoTIFF (*.tif);;PNG (*.png);;JPG (*.jpg);;Todos (*.*)"
+        )
+        if path:
+            self._out_edit.setText(os.path.normpath(path))
 
     def _update_preview(self):
         try:
@@ -308,19 +350,27 @@ class LandXMLComparadorGUI(QWidget):
     # -------------------------------------------------------------------------
 
     def _run(self):
-        f1 = self._file1_sel.get_path()
-        f2 = self._file2_sel.get_path()
+        files = self._file_drop.get_files()
+        f1, f2 = files[0], files[1] if len(files) >= 2 else (None, None)
         if not f1 or not f2:
             QMessageBox.critical(self, "Error", "Seleccione ambos archivos LandXML.")
             return
 
+        out_path = self._out_edit.text().strip()
+        if not out_path:
+            QMessageBox.critical(self, "Error", "Debe especificar una ruta de salida.")
+            return
+            
+        out_dir = os.path.dirname(out_path)
+        out_name = os.path.splitext(os.path.basename(out_path))[0]
+        
         params = {
             'file1':         f1,
             'file2':         f2,
             'resolution':    self._res_spin.value(),
             'epsg':          self._epsg_spin.value(),
-            'out_name':      self._name_edit.text().strip() or 'diferencia',
-            'out_dir':       self._out_dir,
+            'out_name':      out_name,
+            'out_dir':       out_dir,
             'colormap':      self._cmap_combo.currentText(),
             'whitening':     self._whitening_slider.value(),
             'save_png':      self._chk_png.isChecked(),
@@ -340,6 +390,7 @@ class LandXMLComparadorGUI(QWidget):
         self._worker.moveToThread(self._thread)
         self._thread.started.connect(self._worker.run)
         self._worker.progress.connect(self._on_progress)
+        self._worker.log.connect(self._log)
         self._worker.done.connect(self._on_done)
         self._worker.done.connect(self._thread.quit)
         self._worker.done.connect(self._worker.deleteLater)
@@ -357,6 +408,7 @@ class LandXMLComparadorGUI(QWidget):
         if success:
             self._status.setText("✓ Proceso completado")
             self._status.setStyleSheet(f"color: {COLORS['success']}; font-size: {FONTS['size_small']}pt;")
+            self._log("✓ PROCESO FINALIZADO CON ÉXITO")
             out = self._out_dir or "(directorio del archivo)"
             QMessageBox.information(self, "Completado",
                                     f"{msg}\n\nArchivos guardados en:\n{out}")
@@ -365,3 +417,71 @@ class LandXMLComparadorGUI(QWidget):
             self._status.setStyleSheet(f"color: {COLORS['danger']}; font-size: {FONTS['size_small']}pt;")
             QMessageBox.critical(self, "Error", f"Ocurrió un error:\n\n{msg[:600]}")
         self._progress.setVisible(False)
+
+    # -------------------------------------------------------------------------
+    # Console Log
+    # -------------------------------------------------------------------------
+
+    def _log(self, text: str):
+        """Escribe un mensaje en la consola de log."""
+        self._console.moveCursor(self._console.textCursor().End)
+        self._console.insertPlainText(text + "\n")
+        self._console.ensureCursorVisible()
+
+    # -------------------------------------------------------------------------
+    # Detección EPSG
+    # -------------------------------------------------------------------------
+
+    def _detect_epsg_from_coordinates(self, file_path: str) -> int:
+        """Detecta CRS aproximado desde las coordenadas del archivo LandXML."""
+        try:
+            from lxml import etree
+            tree = etree.parse(file_path)
+            # Buscar coordenadas en Pnts o Surface/Definition/Pnts
+            pnts = tree.findall(".//Pnt")
+            if not pnts:
+                return 25830
+            # Tomar primeras 3 coordenadas
+            xs, ys = [], []
+            for p in pnts[:3]:
+                coords = p.text.strip().split()
+                if len(coords) >= 2:
+                    xs.append(float(coords[0]))
+                    ys.append(float(coords[1]))
+            if not xs:
+                return 25830
+            x_mean = sum(xs) / len(xs)
+            y_mean = sum(ys) / len(ys)
+            # WGS84 geográfico
+            if -180 <= x_mean <= 180 and -90 <= y_mean <= 90:
+                return 4326
+            # UTM 30N (España)
+            if 250000 <= x_mean <= 750000 and 4000000 <= y_mean <= 4800000:
+                return 25830
+            return 25830
+        except Exception:
+            return 25830
+
+    # -------------------------------------------------------------------------
+    # Menú contextual
+    # -------------------------------------------------------------------------
+
+    def _show_ctx_menu(self, pos):
+        """Muestra el menú contextual para la lista de archivos."""
+        menu = QMenu(self)
+        remove_act = menu.addAction("Eliminar archivo")
+        remove_act.triggered.connect(self._remove_selected)
+        menu.exec(self._file_list.mapToGlobal(pos))
+
+    def _remove_selected(self):
+        """Elimina los archivos seleccionados de la lista."""
+        rows = sorted([self._file_list.row(i) for i in self._file_list.selectedItems()], reverse=True)
+        files = self._file_drop.get_files()
+        for r in rows:
+            if r < len(files):
+                files.pop(r)
+        self._file_drop._files = files  # Actualizar FileDropBox internamente
+        self._file_list.clear()
+        for f in files:
+            self._file_list.addItem(os.path.basename(f))
+        self._check_ready()

@@ -11,13 +11,14 @@ from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
     QPushButton, QDoubleSpinBox, QSpinBox, QComboBox, QSlider,
     QCheckBox, QFileDialog, QMessageBox, QProgressBar,
-    QScrollArea, QSizePolicy, QFrame
+    QScrollArea, QSizePolicy, QFrame, QAbstractSpinBox,
+    QListWidget, QTextEdit, QMenu
 )
 from PySide6.QtCore import Qt, QThread, Signal, QObject
 from PySide6.QtGui import QPixmap, QPainter, QLinearGradient, QColor
 
 from .theme import COLORS, FONTS, SPACING
-from .widgets import Card, FileSelector
+from .widgets import Card, FileDropBox
 
 
 # =============================================================================
@@ -28,6 +29,7 @@ class _VisualizadorWorker(QObject):
     """Hilo de procesamiento para el Visualizador."""
 
     progress = Signal(str, int)   # (mensaje, porcentaje)
+    log      = Signal(str)        # mensaje de log en tiempo real
     done     = Signal(bool, str)  # (éxito, mensaje)
 
     def __init__(self, params: dict):
@@ -43,21 +45,28 @@ class _VisualizadorWorker(QObject):
 
             p = self._p
             self.progress.emit("Leyendo LandXML...", 10)
+            self.log.emit("> Leyendo archivo LandXML...")
             points, triangles = parse_landxml_surface(p['xml_file'])
+            self.log.emit(f"  ✓ Superficie cargada: {len(points)} puntos, {len(triangles) if triangles is not None else 0} triángulos")
 
             self.progress.emit("Rasterizando TIN...", 30)
+            self.log.emit("> Rasterizando superficie TIN...")
             grid_z, extent = rasterize_surface_tin(points, triangles, resolution=p['resolution'])
+            self.log.emit(f"  ✓ Grid generado: {grid_z.shape}")
 
             out_dir = p['out_dir']
             out_name = p['out_name']
 
             if p['save_tiff']:
                 self.progress.emit("Guardando GeoTIFF...", 55)
+                self.log.emit("> Guardando GeoTIFF...")
                 save_geotiff(grid_z, extent, os.path.join(out_dir, out_name + ".tif"),
                              epsg_code=p['epsg'])
+                self.log.emit(f"  ✓ Archivo: {out_name}.tif")
 
             if p['save_png'] or p['save_jpg']:
                 self.progress.emit("Generando imágenes...", 75)
+                self.log.emit("> Generando imágenes de color...")
                 class_interval = p['class_interval'] if p['classify'] else None
                 hillshade_intensity = p['hillshade'] / 100.0
                 save_colored_map(
@@ -73,21 +82,27 @@ class _VisualizadorWorker(QObject):
                 )
                 if p['save_png']:
                     save_world_file(extent, grid_z.shape, os.path.join(out_dir, out_name + ".pgw"))
+                    self.log.emit(f"  ✓ PNG + PGW")
                 if p['save_jpg']:
                     save_world_file(extent, grid_z.shape, os.path.join(out_dir, out_name + ".jgw"))
+                    self.log.emit(f"  ✓ JPG + JGW")
 
             if p['save_legend']:
                 self.progress.emit("Generando leyenda...", 90)
+                self.log.emit("> Generando leyenda de color...")
                 create_colormap_legend(
                     grid_z, colormap=p['colormap'],
                     output_path=os.path.join(out_dir, out_name + "_legend.png"),
                     class_interval=p['class_interval'] if p['classify'] else None,
                     whitening=p['whitening'] / 100.0
                 )
+                self.log.emit(f"  ✓ Leyenda guardada")
 
             self.done.emit(True, "Proceso completado exitosamente.")
+            self.log.emit("✓ PROCESO FINALIZADO CON ÉXITO")
         except Exception as exc:
             import traceback
+            self.log.emit(f"✗ ERROR: {exc}")
             self.done.emit(False, traceback.format_exc())
 
 
@@ -117,23 +132,27 @@ class LandXMLVisualizadorGUI(QWidget):
 
     def _build_ui(self):
         root = QVBoxLayout(self)
-        root.setContentsMargins(SPACING['xl'], SPACING['xl'], SPACING['xl'], SPACING['xl'])
-        root.setSpacing(SPACING['md'])
+        root.setContentsMargins(SPACING['md'], SPACING['md'], SPACING['md'], SPACING['md'])
+        root.setSpacing(SPACING['sm'])
 
         scroll = QScrollArea()
+        scroll.setObjectName("MainScroll")
         scroll.setWidgetResizable(True)
-        scroll.setStyleSheet("QScrollArea { border: none; background: transparent; }")
+        scroll.setStyleSheet("#MainScroll { border: none; background: transparent; }")
         container = QWidget()
-        container.setStyleSheet("background: transparent;")
+        container.setObjectName("MainContainer")
+        container.setStyleSheet("#MainContainer { background: transparent; }")
         layout = QVBoxLayout(container)
         layout.setSpacing(SPACING['md'])
         layout.setContentsMargins(0, 0, 0, 0)
 
         # --- Archivo ---
         card_file = Card(self, "Archivo de Entrada")
-        self._file_sel = FileSelector("Superficie LandXML (.xml)", parent=self)
-        self._file_sel.fileSelected.connect(self._on_file_selected)
-        card_file.content_layout().addWidget(self._file_sel)
+        self._file_drop = FileDropBox(mode='single', parent=self)
+        self._file_drop.fileSelected.connect(self._on_file_selected)
+        card_file.content_layout().addWidget(self._file_drop)
+
+        card_file.content_layout().addWidget(self._file_drop)
         layout.addWidget(card_file)
 
         # --- Parámetros ---
@@ -153,30 +172,24 @@ class LandXMLVisualizadorGUI(QWidget):
         self._epsg_spin = QSpinBox()
         self._epsg_spin.setRange(1024, 99999)
         self._epsg_spin.setValue(self._cfg.get('epsg', 25830))
+        self._epsg_spin.setButtonSymbols(QAbstractSpinBox.NoButtons)
         row1.add(self._epsg_spin)
         row1.addStretch()
         pl.addWidget(row1)
 
-        # Nombre de salida
-        row_name = _HRow()
-        row_name.add(QLabel("Nombre salida:"), fixed_width=130)
-        self._name_edit = QLineEdit(self._cfg.get('output_name', 'superficie'))
-        row_name.add(self._name_edit)
-        pl.addWidget(row_name)
-
-        # Directorio salida
-        row_dir = _HRow()
-        row_dir.add(QLabel("Directorio salida:"), fixed_width=130)
-        self._dir_edit = QLineEdit()
-        self._dir_edit.setReadOnly(True)
-        self._dir_edit.setPlaceholderText("(mismo que el archivo por defecto)")
-        row_dir.add(self._dir_edit)
-        btn_dir = QPushButton("Browse")
-        btn_dir.setFixedWidth(80)
-        btn_dir.setCursor(Qt.PointingHandCursor)
-        btn_dir.clicked.connect(self._select_dir)
-        row_dir.add(btn_dir)
-        pl.addWidget(row_dir)
+        # Salida (fusión de nombre + directorio)
+        row_out = _HRow()
+        row_out.add(QLabel("Salida:"), fixed_width=130)
+        self._out_edit = QLineEdit()
+        self._out_edit.setPlaceholderText("Ruta completa del archivo de salida...")
+        row_out.add(self._out_edit)
+        btn_out = QPushButton("Examinar")
+        btn_out.setObjectName("BrowseButton")
+        btn_out.setFixedWidth(90)
+        btn_out.setCursor(Qt.PointingHandCursor)
+        btn_out.clicked.connect(self._select_output)
+        row_out.add(btn_out)
+        pl.addWidget(row_out)
 
         # Mapa de color
         row_cmap = _HRow()
@@ -244,6 +257,16 @@ class LandXMLVisualizadorGUI(QWidget):
         self._btn_run.clicked.connect(self._run)
         layout.addWidget(self._btn_run)
 
+        # --- Log de proceso ---
+        card_log = Card(self, "LOG DE PROCESO")
+        log_layout = card_log.content_layout()
+        self._console = QTextEdit()
+        self._console.setObjectName("ConsoleLog")
+        self._console.setReadOnly(True)
+        self._console.setMinimumHeight(120)
+        log_layout.addWidget(self._console)
+        layout.addWidget(card_log)
+
         # ---Progreso + estado ---
         self._progress = QProgressBar()
         self._progress.setRange(0, 100)
@@ -297,20 +320,31 @@ class LandXMLVisualizadorGUI(QWidget):
     def _on_file_selected(self, path: str):
         self._xml_file = path
         basename = os.path.splitext(os.path.basename(path))[0]
-        self._name_edit.setText(basename)
-        if not self._out_dir:
-            self._dir_edit.setText(os.path.dirname(path))
-            self._out_dir = os.path.dirname(path)
+        # Sugerir ruta de salida con getSaveFileName
+        default_name = os.path.join(os.path.dirname(path), basename)
+        self._out_edit.setText(default_name)
+        
+        # Detectar EPSG desde coordenadas
+        detected = self._detect_epsg_from_coordinates(path)
+        self._epsg_spin.setValue(detected)
+        
         self._btn_run.setEnabled(True)
         self._status.setText("✓ Listo para procesar")
         self._status.setStyleSheet(f"color: {COLORS['success']}; font-size: {FONTS['size_small']}pt;")
 
-    def _select_dir(self):
-        d = QFileDialog.getExistingDirectory(self, "Seleccionar directorio de salida",
-                                             self._out_dir)
-        if d:
-            self._out_dir = d
-            self._dir_edit.setText(d)
+    def _select_output(self):
+        # Usar getSaveFileName para obtener ruta completa de salida
+        current = self._out_edit.text()
+        default_dir = os.path.dirname(current) if current else ""
+        default_name = os.path.basename(current) if current else "superficie.tif"
+        
+        path, _ = QFileDialog.getSaveFileName(
+            self, "Guardar archivo de salida", 
+            os.path.join(default_dir, default_name),
+            "GeoTIFF (*.tif);;PNG (*.png);;JPG (*.jpg);;Todos (*.*)"
+        )
+        if path:
+            self._out_edit.setText(os.path.normpath(path))
 
     def _update_preview(self):
         """Dibuja el gradiente del colormap seleccionado en el label de preview."""
@@ -345,12 +379,19 @@ class LandXMLVisualizadorGUI(QWidget):
             QMessageBox.critical(self, "Error", "Archivo LandXML no válido.")
             return
 
-        out_dir = self._out_dir or os.path.dirname(xml)
+        out_path = self._out_edit.text().strip()
+        if not out_path:
+            QMessageBox.critical(self, "Error", "Debe especificar una ruta de salida.")
+            return
+
+        out_dir = os.path.dirname(out_path)
+        out_name = os.path.splitext(os.path.basename(out_path))[0]
+        
         params = {
             'xml_file':      xml,
             'resolution':    self._res_spin.value(),
             'epsg':          self._epsg_spin.value(),
-            'out_name':      self._name_edit.text().strip() or 'superficie',
+            'out_name':      out_name,
             'out_dir':       out_dir,
             'colormap':      self._cmap_combo.currentText(),
             'whitening':     self._whitening_slider.value(),
@@ -372,6 +413,7 @@ class LandXMLVisualizadorGUI(QWidget):
         self._worker.moveToThread(self._thread)
         self._thread.started.connect(self._worker.run)
         self._worker.progress.connect(self._on_progress)
+        self._worker.log.connect(self._log)
         self._worker.done.connect(self._on_done)
         self._worker.done.connect(self._thread.quit)
         self._worker.done.connect(self._worker.deleteLater)
@@ -396,6 +438,50 @@ class LandXMLVisualizadorGUI(QWidget):
             QMessageBox.critical(self, "Error", f"Ocurrió un error:\n\n{msg[:600]}")
         self._progress.setVisible(False)
 
+    # -------------------------------------------------------------------------
+    # Detección EPSG
+    # -------------------------------------------------------------------------
+
+    def _detect_epsg_from_coordinates(self, file_path: str) -> int:
+        """Detecta CRS aproximado desde las coordenadas del archivo LandXML."""
+        try:
+            from lxml import etree
+            tree = etree.parse(file_path)
+            # Buscar coordenadas en Pnts o Surface/Definition/Pnts
+            pnts = tree.findall(".//Pnt")
+            if not pnts:
+                return 25830
+            # Tomar primeras 3 coordenadas
+            xs, ys = [], []
+            for p in pnts[:3]:
+                coords = p.text.strip().split()
+                if len(coords) >= 2:
+                    xs.append(float(coords[0]))
+                    ys.append(float(coords[1]))
+            if not xs:
+                return 25830
+            x_mean = sum(xs) / len(xs)
+            y_mean = sum(ys) / len(ys)
+            # WGS84 geográfico
+            if -180 <= x_mean <= 180 and -90 <= y_mean <= 90:
+                return 4326
+            # UTM 30N (España)
+            if 250000 <= x_mean <= 750000 and 4000000 <= y_mean <= 4800000:
+                return 25830
+            return 25830
+        except Exception:
+            return 25830
+
+    # -------------------------------------------------------------------------
+    # Console Log
+    # -------------------------------------------------------------------------
+
+    def _log(self, text: str):
+        """Escribe un mensaje en la consola de log."""
+        self._console.moveCursor(self._console.textCursor().End)
+        self._console.insertPlainText(text + "\n")
+        self._console.ensureCursorVisible()
+
 
 # =============================================================================
 # Helper de layout horizontal
@@ -406,7 +492,8 @@ class _HRow(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setStyleSheet("background: transparent; border: none;")
+        self.setObjectName("HRowContainer")
+        self.setStyleSheet("#HRowContainer { background: transparent; border: none; }")
         self._layout = QHBoxLayout(self)
         self._layout.setContentsMargins(0, 0, 0, 0)
         self._layout.setSpacing(SPACING['sm'])

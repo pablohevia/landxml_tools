@@ -15,13 +15,13 @@ from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
     QPushButton, QDoubleSpinBox, QSpinBox, QTextEdit,
     QListWidget, QCheckBox, QFileDialog, QMessageBox,
-    QSizePolicy, QFrame, QScrollArea, QMenu
+    QSizePolicy, QFrame, QScrollArea, QMenu, QAbstractSpinBox
 )
 from PySide6.QtCore import Qt, QThread, Signal, QObject
 from PySide6.QtGui import QCursor
 
 from .theme import COLORS, FONTS, SPACING
-from .widgets import Card, DropZone
+from .widgets import Card, FileDropBox
 
 
 # =============================================================================
@@ -82,16 +82,17 @@ class LandXMLIntersectionGUI(QWidget):
 
     def _build_ui(self):
         root = QVBoxLayout(self)
-        root.setContentsMargins(SPACING['xl'], SPACING['xl'], SPACING['xl'], SPACING['xl'])
-        root.setSpacing(SPACING['md'])
+        root.setContentsMargins(SPACING['md'], SPACING['md'], SPACING['md'], SPACING['md'])
+        root.setSpacing(SPACING['sm'])
 
-        # Scroll area para acomodar el contenido
         scroll = QScrollArea()
+        scroll.setObjectName("MainScroll")
         scroll.setWidgetResizable(True)
-        scroll.setStyleSheet("QScrollArea { border: none; background: transparent; }")
+        scroll.setStyleSheet("#MainScroll { border: none; background: transparent; }")
 
         container = QWidget()
-        container.setStyleSheet("background: transparent;")
+        container.setObjectName("MainContainer")
+        container.setStyleSheet("#MainContainer { background: transparent; }")
         layout = QVBoxLayout(container)
         layout.setSpacing(SPACING['md'])
         layout.setContentsMargins(0, 0, 0, 0)
@@ -100,13 +101,13 @@ class LandXMLIntersectionGUI(QWidget):
         card_files = Card(self, "Archivos de Entrada")
         files_layout = card_files.content_layout()
 
-        self._drop_zone = DropZone()
-        self._drop_zone.filesDropped.connect(self._on_files_dropped)
-        files_layout.addWidget(self._drop_zone)
+        self._file_drop = FileDropBox(mode='multi', parent=self)
+        self._file_drop.filesSelected.connect(self._on_files_selected)
+        files_layout.addWidget(self._file_drop)
 
         # Lista de archivos cargados
         self._file_list = QListWidget()
-        self._file_list.setMaximumHeight(80)
+        self._file_list.setMaximumHeight(60) # Reducido de 80
         self._file_list.setSelectionMode(QListWidget.ExtendedSelection)
         self._file_list.setContextMenuPolicy(Qt.CustomContextMenu)
         self._file_list.customContextMenuRequested.connect(self._show_ctx_menu)
@@ -120,15 +121,17 @@ class LandXMLIntersectionGUI(QWidget):
 
         # Ruta de salida
         out_row = QWidget()
-        out_row.setStyleSheet("background: transparent; border: none;")
+        out_row.setObjectName("OutRowContainer")
+        out_row.setStyleSheet("#OutRowContainer { background: transparent; border: none; }")
         out_hl = QHBoxLayout(out_row)
         out_hl.setContentsMargins(0, 0, 0, 0)
         out_hl.addWidget(QLabel("Salida DXF:"))
         self._out_path = QLineEdit()
         self._out_path.setPlaceholderText("Ruta del archivo DXF de salida...")
         out_hl.addWidget(self._out_path)
-        btn_browse = QPushButton("Browse")
-        btn_browse.setFixedWidth(80)
+        btn_browse = QPushButton("Examinar")
+        btn_browse.setObjectName("BrowseButton")
+        btn_browse.setFixedWidth(90)
         btn_browse.setCursor(Qt.PointingHandCursor)
         btn_browse.clicked.connect(self._select_output)
         out_hl.addWidget(btn_browse)
@@ -136,7 +139,8 @@ class LandXMLIntersectionGUI(QWidget):
 
         # Epsilon + EPSG
         params_row = QWidget()
-        params_row.setStyleSheet("background: transparent; border: none;")
+        params_row.setObjectName("ParamsRowContainer")
+        params_row.setStyleSheet("#ParamsRowContainer { background: transparent; border: none; }")
         params_hl = QHBoxLayout(params_row)
         params_hl.setContentsMargins(0, 0, 0, 0)
         params_hl.setSpacing(SPACING['lg'])
@@ -154,14 +158,11 @@ class LandXMLIntersectionGUI(QWidget):
 
         # EPSG
         epsg_col = QVBoxLayout()
-        self._epsg_auto = QCheckBox("Autodetectar EPSG")
-        self._epsg_auto.setChecked(self._cfg.get('epsg_autodetect', True))
-        self._epsg_auto.stateChanged.connect(self._toggle_epsg)
-        epsg_col.addWidget(self._epsg_auto)
+        epsg_col.addWidget(QLabel("EPSG:"))
         self._epsg_spin = QSpinBox()
         self._epsg_spin.setRange(1024, 99999)
         self._epsg_spin.setValue(self._cfg.get('epsg', 25830))
-        self._epsg_spin.setEnabled(not self._epsg_auto.isChecked())
+        self._epsg_spin.setButtonSymbols(QAbstractSpinBox.NoButtons)
         epsg_col.addWidget(self._epsg_spin)
         params_hl.addLayout(epsg_col)
 
@@ -196,12 +197,9 @@ class LandXMLIntersectionGUI(QWidget):
     # Handlers de archivos
     # -------------------------------------------------------------------------
 
-    def _on_files_dropped(self, files: list):
-        """Gestiona los archivos soltados o seleccionados en la DropZone."""
-        self._loaded_files.extend(files)
-        if len(self._loaded_files) > 2:
-            QMessageBox.warning(self, "Aviso", "Solo se aceptan 2 archivos. Se usarán los dos primeros.")
-            self._loaded_files = self._loaded_files[:2]
+    def _on_files_selected(self, files: list):
+        """Gestiona los archivos seleccionados en FileDropBox."""
+        self._loaded_files = files[:2]  # Reemplazar, no extender
 
         self._file_list.clear()
         for f in self._loaded_files:
