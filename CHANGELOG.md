@@ -1,5 +1,21 @@
 # CHANGELOG.md - Historial de cambios de LandXML Tools
 
+## 2026-04-18
+
+### Iteración 5 — Corrección de Bloqueos y Optimización del Visualizador
+- **Archivos:** `visualizador_gui.py`
+- **Cambio:** editar
+- **Ejecutado por:** ⚡ **Gemini** (3 Flash)
+- **Revisado por:** ⚡ **Gemini** (3 Flash)
+- **Nota:**
+  - **Detección Ligera de EPSG**: Sustitución de `lxml.etree.parse` por lectura parcial de los primeros 4KB para evitar bloqueos en el hilo de UI.
+  - **Orden Defensivo**: Reordenamiento de `_on_file_selected` para habilitar el botón "Procesar" y el log de carga antes de cualquier procesamiento pesado.
+  - **Sistema de Log Robusto**: 
+    - Implementación de redirección de `stdout` en el Worker para capturar mensajes del core.
+    - Limpieza automática de la consola al iniciar el proceso.
+    - Uso de `append()` para una actualización de consola más eficiente y fluida.
+  - **Limpieza de UI**: Eliminación de `addWidget` duplicado que causaba inconsistencias en el layout.
+
 ## 2026-04-11
 
 ### Iteración 4.0 — Refactorización Profunda y Limpieza del Proyecto (Hito Final)

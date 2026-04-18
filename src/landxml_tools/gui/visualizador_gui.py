@@ -7,6 +7,8 @@ superficies TIN en formato LandXML.
 """
 
 import os
+import sys
+import io
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
     QPushButton, QDoubleSpinBox, QSpinBox, QComboBox, QSlider,
@@ -46,8 +48,19 @@ class _VisualizadorWorker(QObject):
             p = self._p
             self.progress.emit("Leyendo LandXML...", 10)
             self.log.emit("> Leyendo archivo LandXML...")
-            points, triangles = parse_landxml_surface(p['xml_file'])
-            self.log.emit(f"  ✓ Superficie cargada: {len(points)} puntos, {len(triangles) if triangles is not None else 0} triángulos")
+            
+            # Capturar prints del core redirigiendo stdout temporalmente
+            _stdout = sys.stdout
+            sys.stdout = io.StringIO()
+            try:
+                points, triangles = parse_landxml_surface(p['xml_file'])
+                # Emitir lo capturado si hay contenido
+                captured = sys.stdout.getvalue().strip()
+                if captured:
+                    for line in captured.split('\n'):
+                        self.log.emit(line)
+            finally:
+                sys.stdout = _stdout
 
             self.progress.emit("Rasterizando TIN...", 30)
             self.log.emit("> Rasterizando superficie TIN...")
@@ -146,8 +159,6 @@ class LandXMLVisualizadorGUI(QWidget):
         card_file = Card(self, "Archivo de Entrada")
         self._file_drop = FileDropBox(mode='single', parent=self)
         self._file_drop.fileSelected.connect(self._on_file_selected)
-        card_file.content_layout().addWidget(self._file_drop)
-
         card_file.content_layout().addWidget(self._file_drop)
         layout.addWidget(card_file)
 
@@ -314,12 +325,14 @@ class LandXMLVisualizadorGUI(QWidget):
         default_name = os.path.join(os.path.dirname(path), basename)
         self._out_edit.setText(default_name)
         
-        # Detectar EPSG desde coordenadas
+        # Habilitar inmediatamente — no depende de la detección EPSG (defensivo)
+        self._btn_run.setEnabled(True)
+        self._log("✓ Archivo cargado: Listo para procesar")
+        
+        # Detectar EPSG desde coordenadas (opcional y ahora optimizado)
         detected = self._detect_epsg_from_coordinates(path)
         self._epsg_spin.setValue(detected)
-        
-        self._log("✓ Archivo cargado: Listo para procesar")
-        self._btn_run.setEnabled(True)
+        self._log(f"  → EPSG detectado: {detected}")
 
     def _select_output(self):
         # Usar getSaveFileName para obtener ruta completa de salida
@@ -394,6 +407,8 @@ class LandXMLVisualizadorGUI(QWidget):
         }
 
         self._btn_run.setEnabled(False)
+        self._console.clear()
+        self._log("▶ Iniciando procesamiento...")
         self._progress.setVisible(True)
         self._progress.setValue(0)
 
@@ -428,31 +443,47 @@ class LandXMLVisualizadorGUI(QWidget):
     # -------------------------------------------------------------------------
 
     def _detect_epsg_from_coordinates(self, file_path: str) -> int:
-        """Detecta CRS aproximado desde las coordenadas del archivo LandXML."""
+        """Detecta CRS aproximado leyendo solo los primeros bytes del archivo LandXML."""
+        import re
         try:
-            from lxml import etree
-            tree = etree.parse(file_path)
-            # Buscar coordenadas en Pnts o Surface/Definition/Pnts
-            pnts = tree.findall(".//Pnt")
-            if not pnts:
+            # Leer solo los primeros 4 KB (suficiente para encontrar las primeras coords)
+            with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                head = f.read(4096)
+
+            # Buscar coordenadas con regex en el texto crudo
+            # Los elementos <Pnt> tienen formato: Y X Z (o X Y Z según el software)
+            matches = re.findall(r'<Pnt[^>]*>([\d\s.\-]+)</Pnt>', head)
+            if not matches:
                 return 25830
-            # Tomar primeras 3 coordenadas
+
             xs, ys = [], []
-            for p in pnts[:3]:
-                coords = p.text.strip().split()
-                if len(coords) >= 2:
-                    xs.append(float(coords[0]))
-                    ys.append(float(coords[1]))
+            for m in matches[:3]:
+                parts = m.strip().split()
+                if len(parts) >= 2:
+                    try:
+                        xs.append(float(parts[0]))
+                        ys.append(float(parts[1]))
+                    except ValueError:
+                        continue
+
             if not xs:
                 return 25830
+
             x_mean = sum(xs) / len(xs)
             y_mean = sum(ys) / len(ys)
+
             # WGS84 geográfico
             if -180 <= x_mean <= 180 and -90 <= y_mean <= 90:
                 return 4326
-            # UTM 30N (España)
+            
+            # UTM 30N España (ETRS89 / WGS84)
             if 250000 <= x_mean <= 750000 and 4000000 <= y_mean <= 4800000:
                 return 25830
+            
+            # UTM 29N España occidental
+            if 400000 <= x_mean <= 900000 and 4000000 <= y_mean <= 4800000:
+                return 25829
+                
             return 25830
         except Exception:
             return 25830
@@ -463,9 +494,7 @@ class LandXMLVisualizadorGUI(QWidget):
 
     def _log(self, text: str):
         """Escribe un mensaje en la consola de log."""
-        self._console.moveCursor(self._console.textCursor().End)
-        self._console.insertPlainText(text + "\n")
-        self._console.ensureCursorVisible()
+        self._console.append(text)
 
 
 # =============================================================================
