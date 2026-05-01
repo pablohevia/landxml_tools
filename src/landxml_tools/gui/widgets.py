@@ -171,14 +171,20 @@ class FileDropBox(QFrame):
     def dropEvent(self, event: QDropEvent):
         files = self._extract_files(event.mimeData().urls())
         if files:
-            self._files = files
+            if self._mode == "multi":
+                # Extend current files up to 2
+                self._files.extend(f for f in files if f not in self._files)
+                self._files = self._files[:2]
+            else:
+                self._files = files
+
             self._state = self._STATE_LOADED
             self._update_style()
             self._update_subtitle()
             if self._mode == "single":
-                self.fileSelected.emit(files[0])
+                self.fileSelected.emit(self._files[0])
             else:
-                self.filesSelected.emit(files)
+                self.filesSelected.emit(self._files)
         else:
             self._state = self._STATE_DEFAULT
             self._update_style()
@@ -199,7 +205,10 @@ class FileDropBox(QFrame):
         else:
             paths, _ = QFileDialog.getOpenFileNames(self, "Seleccionar LandXML", "", "LandXML (*.xml)")
             if paths:
-                self._files = paths[:2]
+                # Extend current files up to 2
+                self._files.extend(f for f in paths if f not in self._files)
+                self._files = self._files[:2]
+                
                 self._state = self._STATE_LOADED
                 self._update_style()
                 self._update_subtitle()

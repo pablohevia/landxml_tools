@@ -123,6 +123,7 @@ class LandXMLIntersectionGUI(QWidget):
         out_hl.addWidget(QLabel("Salida DXF:"))
         self._out_path = QLineEdit()
         self._out_path.setPlaceholderText("Ruta del archivo DXF de salida...")
+        self._out_path.textChanged.connect(self._update_run_btn)
         out_hl.addWidget(self._out_path)
         btn_browse = QPushButton("Examinar")
         btn_browse.setObjectName("BrowseButton")
@@ -152,11 +153,21 @@ class LandXMLIntersectionGUI(QWidget):
 
         # EPSG
         epsg_col = QVBoxLayout()
-        epsg_col.addWidget(QLabel("EPSG:"))
+        
+        epsg_header = QHBoxLayout()
+        epsg_header.addWidget(QLabel("EPSG:"))
+        self._epsg_auto = QCheckBox("Auto")
+        self._epsg_auto.setChecked(self._cfg.get('epsg_autodetect', True))
+        self._epsg_auto.stateChanged.connect(self._toggle_epsg)
+        epsg_header.addWidget(self._epsg_auto)
+        epsg_header.addStretch()
+        epsg_col.addLayout(epsg_header)
+        
         self._epsg_spin = QSpinBox()
         self._epsg_spin.setRange(1024, 99999)
         self._epsg_spin.setValue(self._cfg.get('epsg', 25830))
         self._epsg_spin.setButtonSymbols(QAbstractSpinBox.NoButtons)
+        self._epsg_spin.setEnabled(not self._epsg_auto.isChecked())
         epsg_col.addWidget(self._epsg_spin)
         params_hl.addLayout(epsg_col)
 
@@ -279,9 +290,7 @@ class LandXMLIntersectionGUI(QWidget):
 
     def _log(self, text: str):
         """Añade texto a la consola de forma segura desde cualquier hilo."""
-        self._console.moveCursor(self._console.textCursor().End)
-        self._console.insertPlainText(text + "\n")
-        self._console.ensureCursorVisible()
+        self._console.append(text)
 
     def _on_done(self, resumen: dict):
         self._btn_run.setEnabled(True)
